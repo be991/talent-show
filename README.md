@@ -1,36 +1,59 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# NUTESA Got Talent NGT10 Ticketing System
 
-## Getting Started
+A modern, light-theme talent show event ticketing system for the "Talent Stardom" university talent competition.
 
-First, run the development server:
+## 🚀 Tech Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Framework**: [Next.js 15 (App Router)](https://nextjs.org/)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/)
+- **Backend**: [Firebase](https://firebase.google.com/) (Auth, Firestore, Storage)
+- **Payments**: [Paystack](https://paystack.com/)
+- **Animations**: [Framer Motion](https://www.framer.com/motion/)
+- **UI Components**: [Shadcn UI](https://ui.shadcn.com/)
+
+## 📂 Folder Structure
+
+```
+src/
+├── app/
+│   ├── (public)/           # Landing page & Sign In
+│   ├── (user)/             # User Dashboard & Ticket Registration
+│   └── (admin)/            # Admin Management Dashboard
+├── components/
+│   ├── atoms/              # Base UI components (Buttons, Inputs)
+│   ├── molecules/          # Composite components (FormFields, Cards)
+│   ├── organisms/          # Complex sections (Navbars, Dashboards)
+│   └── shared/             # Shared utilities
+├── lib/                    # SDK initializations & Helpers
+├── types/                  # TypeScript interfaces
+├── hooks/                  # Custom React hooks
+├── constants/              # Pricing & Config constants
+└── styles/                 # Global styling
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🛠️ Getting Started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1.  **Clone the repository**
+2.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
+3.  **Set up environment variables**:
+    Copy `.env.example` to `.env.local` and fill in the details.
+4.  **Run the development server**:
+    ```bash
+    npm run dev
+    ```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 📅 Development Phases
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1.  **Phase 0**: Setup & Planning
+2.  **Phase 1**: Foundations & Styles
+3.  **Phase 2**: Landing Page & Auth
+4.  **Phase 3**: Registration Flows
+5.  **Phase 4**: User Dashboard
+6.  **Phase 5**: Backend Integration
+7.  **Phase 6**: Admin Dashboard Tasks
+8.  **Phase 7**: QR Scanner & Messaging
+9.  **Phase 8**: Final Testing
