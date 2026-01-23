@@ -8,6 +8,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'link';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
+  isLoading?: boolean; // Added for compatibility
   fullWidth?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
@@ -20,6 +21,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       variant = 'primary',
       size = 'md',
       loading = false,
+      isLoading = false,
       fullWidth = false,
       leftIcon,
       rightIcon,
@@ -30,10 +32,12 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
+    const isActuallyLoading = loading || isLoading;
+
     return (
       <button
         ref={ref}
-        disabled={disabled || loading}
+        disabled={disabled || isActuallyLoading}
         className={cn(
           // Base styles
           'inline-flex items-center justify-center',
@@ -81,14 +85,14 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         )}
         {...props}
       >
-        {loading && (
+        {isActuallyLoading && (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
         )}
-        {!loading && leftIcon && (
+        {!isActuallyLoading && leftIcon && (
           <span className="mr-2">{leftIcon}</span>
         )}
         {children}
-        {!loading && rightIcon && (
+        {!isActuallyLoading && rightIcon && (
           <span className="ml-2">{rightIcon}</span>
         )}
       </button>

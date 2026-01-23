@@ -355,6 +355,27 @@ for (let i = 1; i <= 60; i++) {
 }
 
 // ============================================
+// COMBINED TICKETS FOR COMPATIBILITY
+// ============================================
+
+export const mockTickets = [
+  ...mockContestantTickets.map(t => ({
+    ...t,
+    name: t.fullName,
+    code: t.uniqueCode,
+    type: t.ticketType,
+    date: t.createdAt.toLocaleDateString()
+  })),
+  ...mockAudienceTickets.map(t => ({
+    ...t,
+    name: t.fullName,
+    code: t.uniqueCode,
+    type: t.ticketType,
+    date: t.createdAt.toLocaleDateString()
+  }))
+];
+
+// ============================================
 // HELPER FUNCTIONS
 // ============================================
 
