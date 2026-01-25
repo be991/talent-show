@@ -24,6 +24,7 @@ import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
 import Image from 'next/image';
 import Link from 'next/link';
+import { AdminGuard } from '@/components/guards/AdminGuard';
 
 // Theme Colors
 const GREEN = '#2D5016';
@@ -71,7 +72,9 @@ export default function AdminTicketsPage() {
   };
 
   return (
-    <div className="min-h-screen pb-20" style={{ backgroundColor: BG_WARM }}>
+    <AdminGuard>
+      <div className="min-h-screen pb-20" style={{ backgroundColor: BG_WARM }}>
+
        {/* Simple Header */}
        <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -280,5 +283,7 @@ export default function AdminTicketsPage() {
         </div>
       </main>
     </div>
+    </AdminGuard>
   );
 }
+

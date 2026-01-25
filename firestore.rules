@@ -1,0 +1,67 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() &&
+            exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    // 1. Users Collection
+    match /users/{userId} {
+      // Users can read/write their own document
+      // Admins can read all
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isSignedIn(); // Allow initial profile creation upon sign-up
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // 2. Tickets Collection
+    match /tickets/{ticketId} {
+      // Users can only read their own tickets
+      // Users can create tickets
+      // Admins can read/update all
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn();
+      allow update: if isAdmin(); // Only admins can verify/reject
+      allow delete: if isAdmin();
+    }
+
+    // 3. Payments Collection
+    match /payments/{paymentId} {
+      // Users can read/create their own payments
+      // Users can update their own payment (e.g., adding transfer proof)
+      // Admins can read/update all
+      allow read: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow create: if isSignedIn();
+      allow update: if (isSignedIn() && resource.data.userId == request.auth.uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // 4. Event Settings
+    match /eventSettings/settings {
+      // Readable by everyone
+      // Updatable only by admins
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 5. Admin Logs
+    match /adminLogs/{logId} {
+      // Only admins can read/create
+      allow read, create: if isAdmin();
+      allow update, delete: if false; // Logs should be immutable
+    }
+  }
+}

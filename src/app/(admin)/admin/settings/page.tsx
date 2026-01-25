@@ -27,6 +27,7 @@ import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
 import { mockEventSettings } from '@/lib/mockData';
 import Image from 'next/image';
+import { AdminGuard } from '@/components/guards/AdminGuard';
 
 // Theme Colors
 const GREEN = '#2D5016';
@@ -72,7 +73,8 @@ export default function AdminSettingsPage() {
   };
 
   return (
-    <div className="min-h-screen pb-20 transition-all duration-500" style={{ backgroundColor: BG_WARM }}>
+    <AdminGuard>
+      <div className="min-h-screen pb-20 transition-all duration-500" style={{ backgroundColor: BG_WARM }}>
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 md:px-6 h-20 flex items-center justify-between">
@@ -346,8 +348,10 @@ export default function AdminSettingsPage() {
          )}
       </AnimatePresence>
     </div>
+    </AdminGuard>
   );
 }
+
 
 function Header({ title, desc }: { title: string; desc: string }) {
    return (

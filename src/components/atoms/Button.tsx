@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'link';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'icon';
   loading?: boolean;
   isLoading?: boolean; // Added for compatibility
   fullWidth?: boolean;
@@ -70,11 +70,11 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
               variant === 'link',
           },
           
-          // Size styles
           {
             'px-3 py-1.5 text-sm': size === 'sm',
             'px-6 py-3 text-base': size === 'md',
             'px-8 py-4 text-lg': size === 'lg',
+            'h-10 w-10 p-0': size === 'icon',
           },
           
           // Full width

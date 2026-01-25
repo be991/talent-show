@@ -3,7 +3,10 @@
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 
 // Theme colors matching landing page
 const GREEN = '#2D5016';
@@ -11,14 +14,39 @@ const BG_CREAM = '#EAECE6';
 const BG_WARM = '#EFF1EC';
 
 export default function SignInPage() {
-  const [isLoading, setIsLoading] = useState(false);
+  const { user, loading, signIn, error: authError, isAdmin } = useAuth();
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const router = useRouter();
 
-  const handleGoogleSignIn = () => {
-    setIsLoading(true);
-    console.log('Google sign in clicked');
-    // Simulate delay
-    setTimeout(() => setIsLoading(false), 2000);
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (!loading && user) {
+      if (isAdmin) {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
+    }
+  }, [user, loading, isAdmin, router]);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setIsSigningIn(true);
+      await signIn();
+      // Redirect is handled by the useEffect above
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to sign in with Google');
+      setIsSigningIn(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-warm">
+        <div className="animate-spin w-8 h-8 border-2 border-green-700 border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <main 
@@ -71,15 +99,14 @@ export default function SignInPage() {
             </p>
           </motion.div>
 
-          {/* Google Button */}
           <motion.button
             whileHover={{ scale: 1.02, y: -2 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleGoogleSignIn}
-            disabled={isLoading}
+            disabled={isSigningIn}
             className="w-full relative group overflow-hidden bg-white border-2 border-gray-100 hover:border-gray-200 text-gray-700 font-bold py-4 px-6 rounded-xl flex items-center justify-center gap-3 transition-all shadow-sm hover:shadow-md"
           >
-            {isLoading ? (
+            {isSigningIn ? (
               <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
             ) : (
               <>

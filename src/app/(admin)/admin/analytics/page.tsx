@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
+import { AdminGuard } from '@/components/guards/AdminGuard';
 
 const BG_WARM = '#EFF1EC';
 
@@ -23,7 +24,9 @@ export default function AdminAnalyticsPage() {
   const [timeRange, setTimeRange] = useState('Last 30 Days');
 
   return (
-    <div className="min-h-screen pb-20" style={{ backgroundColor: BG_WARM }}>
+    <AdminGuard>
+      <div className="min-h-screen pb-20" style={{ backgroundColor: BG_WARM }}>
+
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <div>
@@ -124,8 +127,10 @@ export default function AdminAnalyticsPage() {
         </section>
       </main>
     </div>
+    </AdminGuard>
   );
 }
+
 
 function KPICard({ label, value, trend, isUp, icon }: any) {
    return (

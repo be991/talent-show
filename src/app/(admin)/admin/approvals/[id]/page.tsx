@@ -24,6 +24,7 @@ import { Badge } from '@/components/atoms/Badge';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { AdminGuard } from '@/components/guards/AdminGuard';
 
 // Theme Colors
 const GREEN = '#2D5016';
@@ -59,7 +60,8 @@ export default function ApprovalDetailsPage({ params }: { params: Promise<{ id: 
   };
 
   return (
-    <div className="min-h-screen pb-20" style={{ backgroundColor: BG_WARM }}>
+    <AdminGuard>
+      <div className="min-h-screen pb-20" style={{ backgroundColor: BG_WARM }}>
       {/* Breadcrumb & Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
@@ -310,7 +312,8 @@ export default function ApprovalDetailsPage({ params }: { params: Promise<{ id: 
             </motion.div>
          )}
       </AnimatePresence>
-    </div>
+      </div>
+    </AdminGuard>
   );
 }
 

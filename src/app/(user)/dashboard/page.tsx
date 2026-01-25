@@ -36,107 +36,115 @@ const GREEN = '#2D5016';
 const BG_CREAM = '#EAECE6';
 const BG_WARM = '#EFF1EC';
 
+import { useAuth } from '@/hooks/useAuth';
+import { AuthGuard } from '@/components/guards/AuthGuard';
+
 export default function UserDashboard() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'all' | 'contestant' | 'audience'>('all');
 
+  // We'll eventually fetch real tickets, but for now filtering mock by logged in user email if it exists
   const filteredTickets = allTickets.filter(ticket => {
     if (activeTab === 'all') return true;
     return ticket.ticketType === activeTab;
   });
 
   return (
-    <div className="min-h-screen pb-20" style={{ backgroundColor: BG_WARM }}>
-      {/* Spacer for Navbar */}
-      <div className="h-20" />
+    <AuthGuard>
+      <div className="min-h-screen pb-20" style={{ backgroundColor: BG_WARM }}>
+        {/* Spacer for Navbar */}
+        <div className="h-20" />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-10"
-        >
-          <h1 className="text-3xl font-black text-gray-900">
-            Welcome back, {currentUser.displayName}!
-          </h1>
-          <p className="text-gray-500 mt-2">
-            Here's an overview of your tickets and event participation.
-          </p>
-        </motion.div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-          {/* Total Tickets Card */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {/* Welcome Section */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-10"
           >
-            <div className="p-3 rounded-xl bg-orange-50 text-orange-600">
-              <Ticket className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-400 font-medium">Total Tickets</p>
-              <p className="text-2xl font-black text-gray-900">{allTickets.length}</p>
-            </div>
+            <h1 className="text-3xl font-black text-gray-900">
+              Welcome back, {user?.displayName || 'User'}!
+            </h1>
+            <p className="text-gray-500 mt-2">
+              Here's an overview of your tickets and event participation.
+            </p>
           </motion.div>
 
-          {/* Total Spent Card */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2 }}
-            className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4"
-          >
-            <div className="p-3 rounded-xl text-green-700" style={{ backgroundColor: '#E8F5E9' }}>
-              <CreditCard className="w-6 h-6" />
-            </div>
-            <div>
-              <p className="text-sm text-gray-400 font-medium">Total Spent</p>
-              <p className="text-2xl font-black text-gray-900">₦{totalSpent.toLocaleString()}</p>
-            </div>
-          </motion.div>
-        </div>
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            {/* Total Tickets Card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4"
+            >
+              <div className="p-3 rounded-xl bg-orange-50 text-orange-600">
+                <Ticket className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400 font-medium">Total Tickets</p>
+                <p className="text-2xl font-black text-gray-900">{allTickets.length}</p>
+              </div>
+            </motion.div>
 
-        {/* Tickets Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
-            <h2 className="text-2xl font-bold text-gray-900">My Tickets</h2>
-            
-            {/* Filter Tabs */}
-            <div className="flex p-1 bg-white rounded-xl border border-gray-200 shadow-sm">
-              {['all', 'contestant', 'audience'].map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTab(tab as any)}
-                  className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors capitalize ${
-                    activeTab === tab 
-                      ? 'bg-gray-900 text-white shadow-md' 
-                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-                  }`}
-                >
-                  {tab}
-                </button>
+            {/* Total Spent Card */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4"
+            >
+              <div className="p-3 rounded-xl text-green-700" style={{ backgroundColor: '#E8F5E9' }}>
+                <CreditCard className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-400 font-medium">Total Spent</p>
+                <p className="text-2xl font-black text-gray-900">₦{totalSpent.toLocaleString()}</p>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Tickets Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+          >
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+              <h2 className="text-2xl font-bold text-gray-900">My Tickets</h2>
+              
+              {/* Filter Tabs */}
+              <div className="flex p-1 bg-white rounded-xl border border-gray-200 shadow-sm">
+                {['all', 'contestant', 'audience'].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab as any)}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors capitalize ${
+                      activeTab === tab 
+                        ? 'bg-gray-900 text-white shadow-md' 
+                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Ticket Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredTickets.map((ticket, index) => (
+                <TicketCard key={ticket.id} ticket={ticket} index={index} />
               ))}
             </div>
-          </div>
-
-          {/* Ticket Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTickets.map((ticket, index) => (
-              <TicketCard key={ticket.id} ticket={ticket} index={index} />
-            ))}
-          </div>
-        </motion.div>
-      </main>
-    </div>
+          </motion.div>
+        </main>
+      </div>
+    </AuthGuard>
   );
 }
+
 
 function TicketCard({ ticket, index }: { ticket: any, index: number }) {
   const isContestant = ticket.ticketType === 'contestant';

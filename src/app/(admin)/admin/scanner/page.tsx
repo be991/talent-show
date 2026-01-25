@@ -26,6 +26,7 @@ import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
 import Image from 'next/image';
 import Link from 'next/link';
+import { AdminGuard } from '@/components/guards/AdminGuard';
 
 // Theme Colors
 const GREEN = '#2D5016';
@@ -91,7 +92,8 @@ export default function AdminScannerPage() {
   };
 
   return (
-    <div className="min-h-screen text-gray-900 overflow-hidden relative transition-colors duration-500" style={{ backgroundColor: BG_WARM }}>
+    <AdminGuard>
+      <div className="min-h-screen text-gray-900 overflow-hidden relative transition-colors duration-500" style={{ backgroundColor: BG_WARM }}>
       {/* Background Ambience */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-40">
          <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-green-200 rounded-full blur-[120px]" />
@@ -403,8 +405,10 @@ export default function AdminScannerPage() {
       `}</style>
 
     </div>
+    </AdminGuard>
   );
 }
+
 
 function StatItem({ label, value, icon }: any) {
    return (
