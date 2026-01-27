@@ -18,6 +18,8 @@ import { Badge } from '@/components/atoms/Badge';
 import Image from 'next/image';
 import { AdminGuard } from '@/components/guards/AdminGuard';
 
+import { PaymentStatus } from '@/types';
+
 // Theme Colors
 const GREEN = '#2D5016';
 const BG_WARM = '#EFF1EC';
@@ -26,10 +28,18 @@ export default function AdminApprovalsPage() {
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [selectedProof, setSelectedProof] = useState<string | null>(null);
 
+  // Map UI tabs to Data status
+  const getStatusFromTab = (tab: typeof activeTab): PaymentStatus => {
+     switch (tab) {
+        case 'approved': return 'success';
+        case 'rejected': return 'failed';
+        default: return 'pending';
+     }
+  };
+
   // Filter Payments
   const payments = mockPayments.filter(p => {
-     if (activeTab === 'pending') return p.status === 'pending';
-     return p.status === activeTab;
+     return p.status === getStatusFromTab(activeTab);
   });
 
   return (
@@ -44,17 +54,17 @@ export default function AdminApprovalsPage() {
            <p className="text-gray-500">Review and verify bank transfer payments</p>
            
            <div className="flex gap-2 mt-6 overflow-x-auto pb-2">
-              {['pending', 'approved', 'rejected'].map(tab => (
+              {(['pending', 'approved', 'rejected'] as const).map(tab => (
                  <button
                    key={tab}
-                   onClick={() => setActiveTab(tab as any)}
+                   onClick={() => setActiveTab(tab)}
                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors capitalize ${
                       activeTab === tab 
                       ? 'bg-gray-900 text-white' 
                       : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
                    }`}
                  >
-                    {tab} ({mockPayments.filter(p => p.status === tab).length})
+                    {tab} ({mockPayments.filter(p => p.status === getStatusFromTab(tab)).length})
                  </button>
               ))}
            </div>
@@ -106,7 +116,7 @@ function ApprovalCard({ payment }: { payment: any }) {
       <motion.div 
          initial={{ opacity: 0, y: 20 }}
          animate={{ opacity: 1, y: 0 }}
-         className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col md:flex-row"
+         className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col sm:flex-row"
       >
          {/* Left: Details */}
          <div className="p-6 flex-grow flex flex-col justify-between">
@@ -167,7 +177,7 @@ function ApprovalCard({ payment }: { payment: any }) {
          </div>
 
          {/* Right: Proof Preview */}
-         <div className="w-full md:w-48 bg-gray-100 relative group cursor-pointer border-l border-gray-200">
+         <div className="w-full sm:w-48 h-48 sm:h-auto bg-gray-100 relative group cursor-pointer border-t sm:border-t-0 sm:border-l border-gray-200 shrink-0">
              {payment.transferProofURL ? (
                 <>
                   <Image 

@@ -2,102 +2,151 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useRouter } from 'next/navigation';
 import { 
   User, 
   Minus, 
   Plus, 
-  Check, 
   ChevronRight, 
   CreditCard, 
   Sparkles,
-  Ticket,
-  Users,
-  Smartphone,
-  MessageCircle
+  Ticket
 } from 'lucide-react';
 import { Input } from '@/components/atoms/Input';
 import { Button } from '@/components/atoms/Button';
-import { mockUsers } from '@/lib/mockData';
+import { useAuth } from '@/hooks/useAuth';
+import { AuthGuard } from '@/components/guards/AuthGuard';
+import { toast } from 'sonner';
+
+// Form & Validation
+import { useForm, useFieldArray } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 
 // Theme Colors
 const GREEN = '#2D5016';
 const BG_WARM = '#EFF1EC';
 
-import { useAuth } from '@/hooks/useAuth';
-import { AuthGuard } from '@/components/guards/AuthGuard';
+// 1. Zod Validation Schema
+const audienceSchema = z.object({
+  fullName: z.string().min(3, "Full name is required"),
+  phone: z.string().regex(/^(\+234|0)[789]\d{9}$/, "Invalid Nigerian phone number"),
+  whatsappSame: z.boolean(),
+  whatsapp: z.string().optional(),
+  ticketCount: z.number().min(1).max(10),
+  guests: z.array(z.object({
+    name: z.string().min(3, "Guest name is required"),
+    phone: z.string().regex(/^(\+234|0)[789]\d{9}$/, "Invalid phone number"),
+  }))
+}).refine((data) => {
+  if (!data.whatsappSame) {
+    return /^(\+234|0)[789]\d{9}$/.test(data.whatsapp || '');
+  }
+  return true;
+}, {
+  message: "WhatsApp number is required if different from phone",
+  path: ["whatsapp"],
+});
+
+type AudienceFormData = z.infer<typeof audienceSchema>;
 
 export default function AudienceRegisterPage() {
   const { user } = useAuth();
-  const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    fullName: user?.displayName || '',
-    phone: '',
-    whatsappSame: false,
-    whatsapp: '',
-    ticketCount: 1,
+  const router = useRouter();
+  const [submitting, setSubmitting] = useState(false);
+
+  // 2. React Hook Form Setup
+  const { register, control, handleSubmit, watch, setValue, formState: { errors } } = useForm<AudienceFormData>({
+    resolver: zodResolver(audienceSchema),
+    defaultValues: {
+      fullName: user?.displayName || '',
+      phone: '',
+      whatsappSame: false,
+      whatsapp: '',
+      ticketCount: 1,
+      guests: [{ name: user?.displayName || '', phone: '' }] 
+    }
   });
 
-  const [guests, setGuests] = useState<{ name: string; phone: string }[]>([
-    { name: user?.displayName || '', phone: '' } // First ticket defaults to user
-  ]);
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: "guests"
+  });
+
+  // Watch values for UI updates
+  const ticketCount = watch('ticketCount');
+  const whatsappSame = watch('whatsappSame');
+  const phone = watch('phone');
   
-  const [totalPrice, setTotalPrice] = useState(1500);
-
-  // Sync with user data if it loads later
-  useEffect(() => {
-    if (user && formData.fullName === '') {
-      setFormData(prev => ({ ...prev, fullName: user.displayName }));
-      setGuests(prev => {
-        const next = [...prev];
-        if (next[0].name === '') next[0].name = user.displayName;
-        return next;
-      });
-    }
-  }, [user]);
-
-
-  // Update guests array when count changes
-  useEffect(() => {
-    const count = Number(formData.ticketCount);
-    if (count < 1) return;
-    
-    setGuests(prev => {
-      if (count > prev.length) {
-        return [...prev, ...Array(count - prev.length).fill({ name: '', phone: '' })];
-      }
-      return prev.slice(0, count);
-    });
-  }, [formData.ticketCount]);
-
   // Calculate Price
+  const totalPrice = ticketCount * 1500;
+
+  // Sync with user data
   useEffect(() => {
-    setTotalPrice(formData.ticketCount * 1500);
-  }, [formData.ticketCount]);
+    if (user) {
+      if (!watch('fullName')) setValue('fullName', user.displayName || '');
+      // Update first guest name if empty
+      const currentGuests = watch('guests');
+      if (currentGuests[0]?.name === '') {
+        setValue(`guests.0.name`, user.displayName || '');
+      }
+    }
+  }, [user, setValue, watch]);
 
-  const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-  };
+  // Handle Dynamic Guests
+  useEffect(() => {
+    const currentLength = fields.length;
+    if (ticketCount > currentLength) {
+      for (let i = 0; i < ticketCount - currentLength; i++) {
+        append({ name: '', phone: '' });
+      }
+    } else if (ticketCount < currentLength) {
+      for (let i = 0; i < currentLength - ticketCount; i++) {
+        remove(currentLength - 1 - i);
+      }
+    }
+  }, [ticketCount, append, remove, fields.length]);
 
-  const handleGuestChange = (index: number, field: 'name' | 'phone', value: string) => {
-    const newGuests = [...guests];
-    newGuests[index] = { ...newGuests[index], [field]: value };
-    setGuests(newGuests);
-  };
+  // 3. Form Submission
+  const onSubmit = async (data: AudienceFormData) => {
+    setSubmitting(true);
+    
+    try {
+      // Store in sessionStorage
+      const registrationPayload = {
+        ...data,
+        whatsapp: data.whatsappSame ? data.phone : data.whatsapp,
+        totalAmount: totalPrice,
+        ticketType: 'audience',
+        userId: user?.id,
+        userEmail: user?.email,
+        timestamp: new Date().toISOString()
+      };
+      
+      sessionStorage.setItem('registrationData', JSON.stringify(registrationPayload));
+      
+      toast.success('Ticket details saved! Proceeding to payment...');
+      
+      // Short delay for UX
+      setTimeout(() => {
+        router.push('/payment');
+      }, 1000);
 
-  const handleSubmit = () => {
-    console.log('Audience Form Submitted:', { ...formData, guests, totalPrice });
-    setStep(2); // Move to Payment
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to submit. Please check your details.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <AuthGuard>
       <div className="min-h-screen pb-20 overflow-x-hidden" style={{ backgroundColor: BG_WARM }}>
-        {/* Spacer for Navbar */}
         <div className="h-24" />
 
         <main className="max-w-4xl mx-auto px-4">
           
-          {/* Header Section */}
           <div className="mb-12 relative">
             <motion.div
               initial={{ opacity: 0, x: -50 }}
@@ -114,7 +163,7 @@ export default function AudienceRegisterPage() {
             </motion.div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          <form onSubmit={handleSubmit(onSubmit)} className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             
             {/* LEFT COLUMN: FORM */}
             <div className="lg:col-span-2 space-y-6">
@@ -134,33 +183,40 @@ export default function AudienceRegisterPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Input 
-                    label="Full Name"
-                    value={formData.fullName}
-                    onChange={(e) => handleInputChange('fullName', e.target.value)}
-                  />
-                  <Input 
-                    label="Phone Number"
-                    value={formData.phone}
-                    onChange={(e) => {
-                      handleInputChange('phone', e.target.value);
-                      // Auto-update first guest phone if empty
-                      if (guests[0].phone === '') handleGuestChange(0, 'phone', e.target.value);
-                    }}
-                  />
+                  <div>
+                    <Input 
+                      label="Full Name"
+                      {...register('fullName')}
+                      error={errors.fullName?.message}
+                    />
+                  </div>
+                  <div>
+                    <Input 
+                      label="Phone Number"
+                      {...register('phone')}
+                      error={errors.phone?.message}
+                      onChange={(e) => {
+                        register('phone').onChange(e);
+                        // Auto-update first guest phone if empty
+                        if (!watch('guests.0.phone')) {
+                          setValue('guests.0.phone', e.target.value);
+                        }
+                      }}
+                    />
+                  </div>
                   <div className="md:col-span-2">
                       <Input 
                         label="WhatsApp Number" 
                         placeholder="+234..."
-                        disabled={formData.whatsappSame}
-                        value={formData.whatsappSame ? formData.phone : formData.whatsapp}
-                        onChange={(e) => handleInputChange('whatsapp', e.target.value)}
+                        disabled={whatsappSame}
+                        {...register('whatsapp')}
+                        error={errors.whatsapp?.message}
+                        value={whatsappSame ? phone : watch('whatsapp')}
                       />
                       <label className="flex items-center gap-2 mt-2 text-sm text-gray-500 cursor-pointer select-none">
                         <input 
                           type="checkbox" 
-                          checked={formData.whatsappSame}
-                          onChange={(e) => handleInputChange('whatsappSame', e.target.checked)}
+                          {...register('whatsappSame')}
                           className="rounded text-green-600 focus:ring-green-500"
                         />
                         Same as phone number
@@ -177,7 +233,6 @@ export default function AudienceRegisterPage() {
                 className="rounded-[2.5rem] p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl relative overflow-hidden"
                 style={{ background: `linear-gradient(135deg, ${GREEN}, #1a4d1a)` }}
               >
-                {/* Background Pattern */}
                 <div className="absolute inset-0 opacity-10 pointer-events-none">
                     <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-white blur-3xl" />
                 </div>
@@ -192,15 +247,15 @@ export default function AudienceRegisterPage() {
                 <div className="flex items-center gap-4 bg-white/10 backdrop-blur-sm p-2 rounded-full border border-white/20">
                     <button 
                       type="button"
-                      onClick={() => handleInputChange('ticketCount', Math.max(1, formData.ticketCount - 1))}
+                      onClick={() => setValue('ticketCount', Math.max(1, ticketCount - 1))}
                       className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white text-white hover:text-green-900 transition-colors"
                     >
                       <Minus className="w-5 h-5" />
                     </button>
-                    <span className="font-mono text-3xl font-bold w-12 text-center">{formData.ticketCount}</span>
+                    <span className="font-mono text-3xl font-bold w-12 text-center text-white">{ticketCount}</span>
                     <button 
                       type="button"
-                      onClick={() => handleInputChange('ticketCount', Math.min(10, formData.ticketCount + 1))}
+                      onClick={() => setValue('ticketCount', Math.min(10, ticketCount + 1))}
                       className="w-10 h-10 flex items-center justify-center rounded-full bg-white text-green-900 hover:scale-110 transition-transform shadow-lg"
                     >
                       <Plus className="w-5 h-5" />
@@ -212,9 +267,9 @@ export default function AudienceRegisterPage() {
               <div className="space-y-4">
                 <h3 className="text-gray-500 font-medium pl-2">Guest Information</h3>
                 <AnimatePresence>
-                  {guests.map((guest, index) => (
+                  {fields.map((guest, index) => (
                     <motion.div
-                      key={index}
+                      key={guest.id}
                       initial={{ opacity: 0, x: -20, height: 0 }}
                       animate={{ opacity: 1, x: 0, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
@@ -229,16 +284,16 @@ export default function AudienceRegisterPage() {
                             <Input 
                               label="Name on Ticket"
                               placeholder="Enter Name"
-                              value={guest.name}
-                              onChange={(e) => handleGuestChange(index, 'name', e.target.value)}
+                              {...register(`guests.${index}.name` as const)}
+                              error={errors.guests?.[index]?.name?.message}
                             />
                           </div>
                           <div className="space-y-1">
                             <Input 
                               label="Phone Number"
                               placeholder="Enter Phone"
-                              value={guest.phone}
-                              onChange={(e) => handleGuestChange(index, 'phone', e.target.value)}
+                              {...register(`guests.${index}.phone` as const)}
+                              error={errors.guests?.[index]?.phone?.message}
                             />
                           </div>
                         </div>
@@ -267,7 +322,7 @@ export default function AudienceRegisterPage() {
                     <div className="space-y-4 mb-8">
                       <div className="flex justify-between items-center bg-gray-50 p-4 rounded-xl">
                         <span className="text-gray-500 text-sm">Tickets</span>
-                        <span className="font-bold text-gray-900">x{formData.ticketCount}</span>
+                        <span className="font-bold text-gray-900">x{ticketCount}</span>
                       </div>
                       <div className="flex justify-between items-center p-4">
                         <span className="text-gray-400">Total Price</span>
@@ -279,11 +334,11 @@ export default function AudienceRegisterPage() {
 
                     <Button 
                       fullWidth 
-                      type="button"
+                      type="submit"
                       size="lg"
+                      loading={submitting}
                       className="text-white rounded-xl py-4 shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all border-none"
                       style={{ backgroundColor: GREEN }}
-                      onClick={handleSubmit}
                     >
                       Pay ₦{totalPrice.toLocaleString()}
                       <ChevronRight className="w-5 h-5 ml-2" />
@@ -296,8 +351,7 @@ export default function AudienceRegisterPage() {
                 </motion.div>
               </div>
             </div>
-
-          </div>
+          </form>
         </main>
       </div>
     </AuthGuard>
