@@ -8,7 +8,26 @@ import {
   eventReminderTemplate
 } from './templates';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const getResend = () => {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
+    if (process.env.NODE_ENV === 'production') {
+      console.warn('⚠️ RESEND_API_KEY is missing.');
+    }
+    // Return a dummy object that mimics the resend structure
+    return {
+      emails: {
+        send: async () => ({ data: null, error: new Error('Resend not initialized') }),
+      },
+      batch: {
+        send: async () => ({ data: null, error: new Error('Resend not initialized') }),
+      }
+    } as any;
+  }
+  return new Resend(apiKey);
+};
+
+const resend = getResend();
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev';
 
 export async function sendTicketEmail(to: string, ticketData: any, qrCodeUrl: string) {
