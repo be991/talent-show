@@ -227,7 +227,14 @@ export default function AdminSettingsPage() {
       const path = `event/flyer_${Date.now()}.jpg`;
       const url = await uploadFile(compressed instanceof File ? compressed : file, path);
       updateField('eventFlyer', url);
-      toast.success('Flyer uploaded successfully');
+      
+      // Auto-save flyer to Firestore
+      await updateDocument('eventSettings', 'settings', {
+        eventFlyer: url,
+        updatedAt: serverTimestamp(),
+      });
+      
+      toast.success('Flyer uploaded and saved!');
     } catch (error) {
       toast.error('Failed to upload flyer');
     } finally {

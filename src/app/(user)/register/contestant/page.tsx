@@ -18,6 +18,7 @@ import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthGuard } from '@/components/guards/AuthGuard';
 import { toast } from 'sonner';
+import { uploadFile, compressImage } from '@/lib/firebase/storage';
 
 // Form & Validation
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -136,6 +137,13 @@ export default function ContestantRegisterPage() {
     setSubmitting(true);
     
     try {
+      // Upload photo to Cloudinary first
+      toast.loading('Uploading your photo...');
+      const compressed = await compressImage(photo);
+      const photoFile = compressed instanceof File ? compressed : photo;
+      const photoUrl = await uploadFile(photoFile, `contestants/${user?.id}_${Date.now()}`);
+      toast.dismiss();
+      
       // Prepare registration data for payment page
       const registrationPayload = {
         ...data,
@@ -146,16 +154,12 @@ export default function ContestantRegisterPage() {
         audienceTicketCount: audienceCount,
         userId: user?.id,
         userEmail: user?.email,
-        hasPhoto: true, // Photo will be uploaded after payment
-        photoName: photo.name,
+        photoUrl, // Cloudinary URL for the contestant photo
         timestamp: new Date().toISOString()
       };
       
       // Store in sessionStorage
       sessionStorage.setItem('registrationData', JSON.stringify(registrationPayload));
-      
-      // Store photo temporarily (base64 for small files, or handle differently)
-      // For now, we'll handle photo upload in a follow-up step after payment
       
       toast.success('Details saved! Proceeding to payment...');
       

@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
         level: registrationData.level,
         category: registrationData.category,
         gender: registrationData.gender,
-        photoURL: registrationData.photoURL || null,
+        photoURL: registrationData.photoURL || registrationData.photoUrl || null,
         
         // Payment info
         numberOfTickets: 1 + (registrationData.audienceTicketCount || 0),
