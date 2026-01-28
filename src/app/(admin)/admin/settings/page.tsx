@@ -1,6 +1,4 @@
-'use client';
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Settings, 
@@ -21,13 +19,20 @@ import {
   Info,
   ChevronRight,
   Download,
-  Database
+  Database,
+  Loader2,
+  X,
+  PlusCircle
 } from 'lucide-react';
 import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
-import { mockEventSettings } from '@/lib/mockData';
 import Image from 'next/image';
 import { AdminGuard } from '@/components/guards/AdminGuard';
+import { getDocument, updateDocument, createDocument } from '@/lib/firebase/firestore';
+import { uploadFile, compressImage } from '@/lib/firebase/storage';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
+import { serverTimestamp } from 'firebase/firestore';
 
 // Theme Colors
 const GREEN = '#2D5016';
@@ -45,32 +50,154 @@ const TABS: { id: TabType; label: string; icon: any }[] = [
 ];
 
 export default function AdminSettingsPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('event');
-  const [formData, setFormData] = useState(mockEventSettings);
+  const [formData, setFormData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [uploadingFlyer, setUploadingFlyer] = useState(false);
 
-  // Dynamic Lists State
-  const [categories, setCategories] = useState(['Music & Singing', 'Dance', 'Comedy', 'Drama', 'Poetry', 'Spoken Word']);
-  const [faculties, setFaculties] = useState(['Engineering', 'Arts', 'Science', 'Social Science', 'Education']);
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settingsData = await getDocument('eventSettings', 'settings');
+        
+        if (!settingsData) {
+          // Create default settings
+          const defaultSettings = {
+            eventName: 'NUTESA Got Talent NGT10 - Talent Stardom',
+            eventDate: '',
+            eventTime: '',
+            eventVenue: '',
+            eventDescription: '',
+            contestantPrice: 10000,
+            audiencePrice: 1500,
+            registrationOpen: true,
+            maxContestants: 100,
+            maxAudienceTickets: 500,
+            talentCategories: ['Musician', 'Singer', 'Dancer', 'Comedian', 'Artist', 'Poet', 'Spoken Word', 'Other'],
+            faculties: ['Engineering', 'Arts', 'Science', 'Social Science', 'Education', 'Management Science', 'Law', 'Agriculture'],
+            paymentMethods: {
+              paystack: true,
+              bankTransfer: true,
+              cash: false
+            },
+            notifications: {
+              ticketDelivery: true,
+              reminders: true,
+              whatsappUpdates: false
+            },
+            adminEmails: [user?.email].filter(Boolean) as string[],
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          };
+          
+          await createDocument('eventSettings', 'settings', defaultSettings);
+          setFormData(defaultSettings);
+        } else {
+          setFormData(settingsData);
+        }
+      } catch (error) {
+        console.error('Error fetching settings:', error);
+        toast.error('Failed to load system settings');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (user) fetchSettings();
+  }, [user]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!formData || !user) return;
     setIsSaving(true);
-    setTimeout(() => {
-      setIsSaving(false);
+    
+    try {
+      await updateDocument('eventSettings', 'settings', {
+        ...formData,
+        updatedBy: user.id,
+        updatedAt: serverTimestamp(),
+      });
+      
       setSaveSuccess(true);
+      toast.success('Settings synchronized successfully!');
       setTimeout(() => setSaveSuccess(false), 3000);
-    }, 1000);
+
+      // Log admin action
+      await createDocument('adminLogs', `log_${Date.now()}`, {
+        adminId: user.id,
+        adminName: user.displayName || 'Admin',
+        action: `Updated ${activeTab} settings`,
+        targetType: 'settings',
+        targetId: 'settings',
+        timestamp: serverTimestamp(),
+      });
+      
+    } catch (error) {
+      console.error('Save error:', error);
+      toast.error('Failed to update settings');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const addItem = (setList: any) => {
-    const name = window.prompt('Enter name:');
-    if (name) setList((prev: any) => [...prev, name]);
+  const updateField = (field: string, value: any) => {
+    setFormData((prev: any) => ({ ...prev, [field]: value }));
   };
 
-  const removeItem = (setList: any, index: number) => {
-    setList((prev: any) => prev.filter((_: any, i: number) => i !== index));
+  const updateNestedField = (parent: string, field: string, value: any) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      [parent]: { ...prev[parent], [field]: value }
+    }));
   };
+
+  const addItem = (field: string) => {
+    const name = window.prompt(`Enter new ${field}:`);
+    if (name) {
+      setFormData((prev: any) => ({
+        ...prev,
+        [field]: [...prev[field], name]
+      }));
+    }
+  };
+
+  const removeItem = (field: string, index: number) => {
+    setFormData((prev: any) => ({
+      ...prev,
+      [field]: prev[field].filter((_: any, i: number) => i !== index)
+    }));
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingFlyer(true);
+    try {
+      const compressed = await compressImage(file);
+      const path = `event/flyer_${Date.now()}.jpg`;
+      const url = await uploadFile(compressed instanceof File ? compressed : file, path);
+      updateField('eventFlyer', url);
+      toast.success('Flyer uploaded successfully');
+    } catch (error) {
+      toast.error('Failed to upload flyer');
+    } finally {
+      setUploadingFlyer(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <AdminGuard>
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-50">
+          <Loader2 className="w-12 h-12 animate-spin text-green-600 mb-4" />
+          <p className="text-gray-500 font-bold tracking-widest uppercase text-xs">Initializing System Configuration...</p>
+        </div>
+      </AdminGuard>
+    );
+  }
 
   return (
     <AdminGuard>
@@ -148,16 +275,64 @@ export default function AdminSettingsPage() {
                     {activeTab === 'event' && (
                        <div className="p-6 md:p-12 space-y-6 md:space-y-8">
                           <Header title="Primary Identity" desc="Manage how the event appears to users across the platform." />
+                          
+                          <div className="flex flex-col md:flex-row gap-8 items-start mb-8">
+                             <div className="relative group">
+                                <div className="w-32 h-44 rounded-2xl bg-gray-100 overflow-hidden relative border-2 border-white shadow-sm">
+                                   {formData.eventFlyer ? (
+                                      <Image src={formData.eventFlyer} alt="Flyer" fill className="object-cover" />
+                                   ) : (
+                                      <div className="absolute inset-0 flex items-center justify-center text-gray-300">
+                                         <Smartphone size={32} />
+                                      </div>
+                                   )}
+                                   {uploadingFlyer && (
+                                      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center">
+                                         <Loader2 className="w-6 h-6 animate-spin text-white" />
+                                      </div>
+                                   )}
+                                </div>
+                                <label className="absolute -bottom-3 -right-3 w-10 h-10 rounded-full bg-green-600 text-white flex items-center justify-center cursor-pointer shadow-lg hover:bg-green-700 transition-colors">
+                                   <Upload size={18} />
+                                   <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} disabled={uploadingFlyer} />
+                                </label>
+                             </div>
+                             <div className="flex-grow space-y-1">
+                                <h4 className="font-black text-xs uppercase tracking-widest text-gray-400">Event Flyer / Poster</h4>
+                                <p className="text-sm text-gray-500 max-w-sm">This image will be displayed on the landing page and tickets. Recommended: 800x1200px.</p>
+                             </div>
+                          </div>
+
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                             <InputGroup label="Official Event Name" placeholder="NGT10 - Talent Stardom" defaultValue={formData.eventName} />
-                             <InputGroup label="Event Venue" placeholder="University Auditorium" defaultValue={formData.eventVenue} />
-                             <InputGroup label="Date" type="date" defaultValue="2024-03-15" />
-                             <InputGroup label="Start Time" type="time" defaultValue="16:00" />
+                             <InputGroup 
+                                label="Official Event Name" 
+                                value={formData.eventName} 
+                                onChange={(v: string) => updateField('eventName', v)} 
+                             />
+                             <InputGroup 
+                                label="Event Venue" 
+                                value={formData.eventVenue} 
+                                onChange={(v: string) => updateField('eventVenue', v)} 
+                             />
+                             <InputGroup 
+                                label="Date" 
+                                type="date" 
+                                value={formData.eventDate} 
+                                onChange={(v: string) => updateField('eventDate', v)} 
+                             />
+                             <InputGroup 
+                                label="Start Time" 
+                                type="time" 
+                                value={formData.eventTime} 
+                                onChange={(v: string) => updateField('eventTime', v)} 
+                             />
                           </div>
                           <div>
                              <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 block">Event Description</label>
                              <textarea 
                                rows={6}
+                               value={formData.eventDescription || ''}
+                               onChange={(e) => updateField('eventDescription', e.target.value)}
                                className="w-full bg-gray-50 border border-gray-200 rounded-[1.5rem] md:rounded-[2rem] p-4 md:p-6 outline-none focus:border-green-500 focus:bg-white transition-all font-medium text-gray-700 leading-relaxed"
                                placeholder="Enter full event description for the landing page..."
                              />
@@ -176,7 +351,8 @@ export default function AdminSettingsPage() {
                                    <div className="text-2xl md:text-3xl font-black opacity-80">₦</div>
                                    <input 
                                      type="number" 
-                                     defaultValue={formData.contestantPrice} 
+                                     value={formData.contestantPrice} 
+                                     onChange={(e) => updateField('contestantPrice', Number(e.target.value))}
                                      className="bg-transparent text-3xl md:text-4xl font-black outline-none w-full placeholder:text-green-500/50"
                                    />
                                 </div>
@@ -187,7 +363,8 @@ export default function AdminSettingsPage() {
                                    <div className="text-2xl md:text-3xl font-black opacity-80">₦</div>
                                    <input 
                                      type="number" 
-                                     defaultValue={formData.audiencePrice} 
+                                     value={formData.audiencePrice} 
+                                     onChange={(e) => updateField('audiencePrice', Number(e.target.value))}
                                      className="bg-transparent text-3xl md:text-4xl font-black outline-none w-full placeholder:text-amber-500/50"
                                    />
                                 </div>
@@ -197,10 +374,21 @@ export default function AdminSettingsPage() {
                           <div className="space-y-4 md:space-y-6">
                              <h4 className="font-black text-[10px] uppercase tracking-[0.2em] text-gray-400">Payment Channel Configuration</h4>
                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                                <Toggle label="Paystack Gateway (API)" initial={true} />
-                                <Toggle label="Bank Proof Upload (Manual)" initial={true} />
-                                <Toggle label="Cash at Venue (Admins Only)" initial={false} />
-                                <Toggle label="Allow Bulk Transfers" initial={false} />
+                                <Toggle 
+                                  label="Paystack Gateway (API)" 
+                                  isOn={formData.paymentMethods?.paystack} 
+                                  toggle={() => updateNestedField('paymentMethods', 'paystack', !formData.paymentMethods?.paystack)}
+                                />
+                                <Toggle 
+                                  label="Bank Proof Upload (Manual)" 
+                                  isOn={formData.paymentMethods?.bankTransfer} 
+                                  toggle={() => updateNestedField('paymentMethods', 'bankTransfer', !formData.paymentMethods?.bankTransfer)}
+                                />
+                                <Toggle 
+                                  label="Cash at Venue (Admins Only)" 
+                                  isOn={formData.paymentMethods?.cash} 
+                                  toggle={() => updateNestedField('paymentMethods', 'cash', !formData.paymentMethods?.cash)}
+                                />
                              </div>
                           </div>
                        </div>
@@ -212,8 +400,18 @@ export default function AdminSettingsPage() {
                           <Header title="Enrollment Criteria" desc="Configure capacity limits and dynamic registration options." />
                           
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 md:gap-8">
-                             <InputGroup label="Max Contestants" type="number" defaultValue={formData.maxContestants} />
-                             <InputGroup label="Max Audience Tickets" type="number" defaultValue={formData.maxAudienceTickets} />
+                             <InputGroup 
+                               label="Max Contestants" 
+                               type="number" 
+                               value={formData.maxContestants} 
+                               onChange={(v: string) => updateField('maxContestants', Number(v))}
+                             />
+                             <InputGroup 
+                               label="Max Audience Tickets" 
+                               type="number" 
+                               value={formData.maxAudienceTickets} 
+                               onChange={(v: string) => updateField('maxAudienceTickets', Number(v))}
+                             />
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
@@ -222,17 +420,17 @@ export default function AdminSettingsPage() {
                                 <div className="flex items-center justify-between">
                                    <h4 className="font-black text-[10px] uppercase text-gray-400 tracking-widest">Talent Categories</h4>
                                    <button 
-                                      onClick={() => addItem(setCategories)} 
+                                      onClick={() => addItem('talentCategories')} 
                                       className="text-green-600 hover:scale-125 hover:rotate-90 transition-all p-1"
                                    >
                                       <Plus size={20}/>
                                    </button>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                   {categories.map((cat, i) => (
+                                   {formData.talentCategories?.map((cat: string, i: number) => (
                                       <Badge key={i} className="bg-gray-100 text-gray-700 border-none px-3 md:px-4 py-2 rounded-xl group hover:bg-green-50 transition-colors">
                                          <span className="text-xs md:text-sm">{cat}</span>
-                                         <button onClick={() => removeItem(setCategories, i)} className="ml-2 opacity-50 md:opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:scale-125"><X size={12}/></button>
+                                         <button onClick={() => removeItem('talentCategories', i)} className="ml-2 opacity-50 md:opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:scale-125"><X size={12}/></button>
                                       </Badge>
                                    ))}
                                 </div>
@@ -243,21 +441,29 @@ export default function AdminSettingsPage() {
                                 <div className="flex items-center justify-between">
                                    <h4 className="font-black text-[10px] uppercase text-gray-400 tracking-widest">Target Faculties</h4>
                                    <button 
-                                      onClick={() => addItem(setFaculties)} 
+                                      onClick={() => addItem('faculties')} 
                                       className="text-green-600 hover:scale-125 hover:rotate-90 transition-all p-1"
                                    >
                                       <Plus size={20}/>
                                    </button>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                   {faculties.map((fac, i) => (
+                                   {formData.faculties?.map((fac: string, i: number) => (
                                       <Badge key={i} className="bg-gray-100 text-gray-700 border-none px-3 md:px-4 py-2 rounded-xl group hover:bg-green-50 transition-colors">
                                          <span className="text-xs md:text-sm">{fac}</span>
-                                         <button onClick={() => removeItem(setFaculties, i)} className="ml-2 opacity-50 md:opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:scale-125"><X size={12}/></button>
+                                         <button onClick={() => removeItem('faculties', i)} className="ml-2 opacity-50 md:opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:scale-125"><X size={12}/></button>
                                       </Badge>
                                    ))}
                                 </div>
                              </div>
+                          </div>
+
+                          <div className="pt-8 border-t border-gray-100">
+                             <Toggle 
+                               label="Registration Currently Open" 
+                               isOn={formData.registrationOpen} 
+                               toggle={() => updateField('registrationOpen', !formData.registrationOpen)}
+                             />
                           </div>
                        </div>
                     )}
@@ -267,18 +473,21 @@ export default function AdminSettingsPage() {
                        <div className="p-6 md:p-12 space-y-8 md:space-y-12">
                           <Header title="Messaging & Alerts" desc="Configure how the system interacts with users via automated channels." />
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                             <Toggle label="Instant Ticket Delivery" initial={true} />
-                             <Toggle label="Event Day Reminders" initial={true} />
-                             <Toggle label="WhatsApp Proof Updates" initial={false} />
-                             <Toggle label="Faculty-wise Broadcasts" initial={false} />
-                             <Toggle label="Post-event Feedback" initial={false} />
-                             <Toggle label="Sponsor Promotions" initial={false} />
-                          </div>
-                          <div className="pt-8 border-t border-gray-100 flex justify-center md:justify-start">
-                             <Button variant="outline" className="rounded-2xl h-14 px-8 border-gray-200 text-sm font-bold flex gap-2">
-                                <Mail size={18} />
-                                Trigger Global Test Sync
-                             </Button>
+                             <Toggle 
+                               label="Instant Ticket Delivery" 
+                               isOn={formData.notifications?.ticketDelivery} 
+                               toggle={() => updateNestedField('notifications', 'ticketDelivery', !formData.notifications?.ticketDelivery)}
+                             />
+                             <Toggle 
+                               label="Event Day Reminders" 
+                               isOn={formData.notifications?.reminders} 
+                               toggle={() => updateNestedField('notifications', 'reminders', !formData.notifications?.reminders)}
+                             />
+                             <Toggle 
+                               label="WhatsApp Proof Updates" 
+                               isOn={formData.notifications?.whatsappUpdates} 
+                               toggle={() => updateNestedField('notifications', 'whatsappUpdates', !formData.notifications?.whatsappUpdates)}
+                             />
                           </div>
                        </div>
                     )}
@@ -289,21 +498,27 @@ export default function AdminSettingsPage() {
                           <Header title="System Integrity" desc="Administrative power tools and data synchronization controls." />
                           
                           <div className="space-y-6">
-                             <h4 className="font-black text-[10px] uppercase tracking-[0.2em] text-gray-400">Database Snapshot & Exports</h4>
-                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                                <Button variant="outline" className="h-20 rounded-[1.5rem] flex flex-col gap-1 border-gray-200 hover:bg-gray-50 bg-white group shadow-sm">
-                                   <span className="text-xs font-black group-hover:text-green-700 transition-colors">TICKET SCHEMA</span>
-                                   <span className="text-[10px] opacity-40 uppercase font-bold tracking-widest">PDF Export</span>
-                                </Button>
-                                <Button variant="outline" className="h-20 rounded-[1.5rem] flex flex-col gap-1 border-gray-200 hover:bg-gray-50 bg-white group shadow-sm">
-                                   <span className="text-xs font-black group-hover:text-green-700 transition-colors">PAYMENT LOGS</span>
-                                   <span className="text-[10px] opacity-40 uppercase font-bold tracking-widest">CSV Manifest</span>
-                                </Button>
-                                <Button variant="outline" className="h-20 rounded-[1.5rem] flex flex-col gap-1 border-gray-200 hover:bg-gray-50 bg-white group shadow-sm">
-                                   <span className="text-xs font-black group-hover:text-green-700 transition-colors">USER INDEX</span>
-                                   <span className="text-[10px] opacity-40 uppercase font-bold tracking-widest">Deep JSON Dump</span>
-                                </Button>
+                             <h4 className="font-black text-[10px] uppercase tracking-[0.2em] text-gray-400">Admin Management</h4>
+                             <div className="flex flex-wrap gap-2 mb-4">
+                                {formData.adminEmails?.map((email: string, i: number) => (
+                                  <Badge key={i} className="bg-green-50 text-green-700 border-green-100 px-4 py-2 rounded-xl group">
+                                    <span className="text-sm font-bold">{email}</span>
+                                    <button 
+                                      onClick={() => removeItem('adminEmails', i)} 
+                                      className="ml-2 opacity-0 group-hover:opacity-100 text-red-500 transition-all"
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                  </Badge>
+                                ))}
+                                <button 
+                                  onClick={() => addItem('adminEmails')}
+                                  className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-400 hover:bg-green-600 hover:text-white transition-all shadow-sm"
+                                >
+                                  <Plus size={20} />
+                                </button>
                              </div>
+                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest italic">Users with these emails will have dashboard access.</p>
                           </div>
 
                           <div className="pt-12 border-t-2 border-red-50 space-y-6">
@@ -362,13 +577,14 @@ function Header({ title, desc }: { title: string; desc: string }) {
    );
 }
 
-function InputGroup({ label, type = 'text', defaultValue, placeholder }: any) {
+function InputGroup({ label, type = 'text', value, onChange, placeholder }: any) {
    return (
       <div>
          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-2 md:mb-3 block">{label}</label>
          <input 
            type={type} 
-           defaultValue={defaultValue} 
+           value={value || ''} 
+           onChange={(e) => onChange(e.target.value)}
            placeholder={placeholder}
            className="w-full h-12 md:h-14 bg-gray-50 border border-gray-100 rounded-xl md:rounded-2xl px-4 md:px-6 outline-none focus:border-green-500 focus:bg-white transition-all font-bold text-gray-700 text-sm md:text-base shadow-sm"
          />
@@ -376,11 +592,10 @@ function InputGroup({ label, type = 'text', defaultValue, placeholder }: any) {
    );
 }
 
-function Toggle({ label, initial }: { label: string; initial: boolean }) {
-   const [isOn, setIsOn] = useState(initial);
+function Toggle({ label, isOn, toggle }: { label: string; isOn: boolean; toggle: () => void }) {
    return (
       <button 
-         onClick={() => setIsOn(!isOn)}
+         onClick={toggle}
          className="w-full flex items-center justify-between p-4 md:p-5 rounded-xl md:rounded-[2rem] bg-gray-50 border border-gray-100 hover:border-green-200 hover:bg-white transition-all group shadow-sm h-[68px] md:h-[80px]"
       >
          <span className={`text-xs md:text-sm font-black uppercase tracking-wide transition-colors text-left pr-4 ${isOn ? 'text-gray-900' : 'text-gray-400 group-hover:text-gray-600'}`}>
@@ -391,16 +606,4 @@ function Toggle({ label, initial }: { label: string; initial: boolean }) {
          </div>
       </button>
    );
-}
-
-
-function X({ size }: { size: number }) {
-  return (
-    <svg 
-      width={size} height={size} viewBox="0 0 24 24" fill="none" 
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-    >
-      <path d="M18 6 6 18"/><path d="m6 6 12 12"/>
-    </svg>
-  );
 }

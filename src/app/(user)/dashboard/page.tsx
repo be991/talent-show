@@ -9,7 +9,8 @@ import {
   Calendar,
   MapPin,
   Download,
-  AlertCircle
+  AlertCircle,
+  Share2
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/atoms/Button';
@@ -20,6 +21,7 @@ import { queryDocuments } from '@/lib/firebase/firestore';
 import { where } from 'firebase/firestore';
 import { Ticket } from '@/types';
 import Link from 'next/link';
+import { getWhatsAppTicketLink } from '@/lib/utils';
 
 export default function UserDashboard() {
   const { user } = useAuth();
@@ -270,20 +272,24 @@ function TicketCard({ ticket, index }: { ticket: any, index: number }) {
             <Button 
               variant="outline" 
               size="sm"
-              className="w-full text-xs"
+              className="w-full text-xs font-bold"
               leftIcon={<ExternalLink className="w-3 h-3" />}
             >
-              View
+              Open Pass
             </Button>
           </Link>
           <Button 
             variant="ghost" 
             size="sm"
-            className="w-full text-xs bg-gray-50 hover:bg-gray-100 text-gray-600"
-            onClick={() => console.log('Download Ticket', ticket.id)}
-            leftIcon={<Download className="w-3 h-3" />}
+            className="w-full text-xs bg-green-50 hover:bg-green-100 text-green-700 font-bold"
+            disabled={ticket.status !== 'verified'}
+            onClick={() => {
+              const link = getWhatsAppTicketLink(ticket);
+              window.open(link, '_blank');
+            }}
+            leftIcon={<Share2 className="w-3 h-3" />}
           >
-            Save
+            WhatsApp
           </Button>
         </div>
       </div>
