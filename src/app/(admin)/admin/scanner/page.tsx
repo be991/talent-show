@@ -30,6 +30,8 @@ import { AdminGuard } from '@/components/guards/AdminGuard';
 import { QrReader } from 'react-qr-reader';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
+import { queryDocuments, getDocument } from '@/lib/firebase/firestore';
+import { Ticket as TicketType } from '@/types';
 
 // Theme Colors
 const GREEN = '#2D5016';
@@ -46,6 +48,12 @@ export default function AdminScannerPage() {
   const [errorMessage, setErrorMessage] = useState('');
   const [currentTime, setCurrentTime] = useState(new Date());
   const [isMounted, setIsMounted] = useState(false);
+  const [stats, setStats] = useState({
+    liveAdmitted: 0,
+    totalCapacity: 500,
+    scannedToday: 0
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
   
   const lastScannedCode = useRef<string | null>(null);
   const scanTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -53,8 +61,45 @@ export default function AdminScannerPage() {
   useEffect(() => {
     setIsMounted(true);
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    fetchStats();
     return () => clearInterval(timer);
   }, []);
+
+  const fetchStats = async () => {
+    try {
+      setLoadingStats(true);
+      const [tickets, settings] = await Promise.all([
+        queryDocuments<TicketType>('tickets', []),
+        getDocument('eventSettings', 'settings')
+      ]);
+
+      const now = new Date();
+      const startOfDay = new Date(now.setHours(0, 0, 0, 0));
+
+      let liveAdmitted = 0;
+      let scannedToday = 0;
+
+      tickets.forEach(ticket => {
+        if (ticket.admittedAt) {
+          const admittedDate = (ticket.admittedAt as any)?.toDate ? (ticket.admittedAt as any).toDate() : new Date(ticket.admittedAt as any);
+          if (admittedDate >= startOfDay) {
+            liveAdmitted += (ticket.admittedCount || 1);
+            scannedToday += 1;
+          }
+        }
+      });
+
+      setStats({
+        liveAdmitted,
+        totalCapacity: settings?.maxAudienceTickets ? (settings.maxAudienceTickets + (settings.maxContestants || 0)) : 500,
+        scannedToday
+      });
+    } catch (error) {
+      console.error('Error fetching scanner stats:', error);
+    } finally {
+      setLoadingStats(false);
+    }
+  };
 
   const handleScan = async (data: string | null) => {
     if (!data || scanState === 'verifying' || data === lastScannedCode.current) return;
@@ -134,6 +179,7 @@ export default function AdminScannerPage() {
         setHistory(prev => [newLog, ...prev].slice(0, 10));
         toast.success('Admission Confirmed');
         resetScanner();
+        fetchStats();
       } else {
         throw new Error(result.error);
       }
@@ -175,8 +221,16 @@ export default function AdminScannerPage() {
            </div>
 
            <div className="hidden md:flex items-center gap-8">
-              <StatItem label="Live Admitted" value="56 / 450" icon={<Users className="w-4 h-4" />} />
-              <StatItem label="Verified Today" value="24" icon={<Ticket className="w-4 h-4" />} />
+              <StatItem 
+                label="Live Admitted" 
+                value={loadingStats ? "..." : `${stats.liveAdmitted} / ${stats.totalCapacity}`} 
+                icon={<Users className="w-4 h-4" />} 
+              />
+              <StatItem 
+                label="Verified Today" 
+                value={loadingStats ? "..." : stats.scannedToday.toString()} 
+                icon={<Ticket className="w-4 h-4" />} 
+              />
               <div className="text-right border-l border-gray-200 pl-8">
                  <p className="text-[10px] uppercase font-black text-gray-400 tracking-widest">System Time</p>
                  <p className="font-mono text-lg text-gray-900">

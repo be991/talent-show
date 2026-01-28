@@ -18,7 +18,7 @@ import Image from 'next/image';
 import { AdminGuard } from '@/components/guards/AdminGuard';
 import { useAuth } from '@/hooks/useAuth';
 import { queryDocuments } from '@/lib/firebase/firestore';
-import { where, orderBy } from 'firebase/firestore';
+import { where } from 'firebase/firestore';
 import { toast } from 'sonner';
 
 import { PaymentStatus } from '@/types';
@@ -46,10 +46,17 @@ export default function AdminApprovalsPage() {
 
       const results = await queryDocuments('payments', [
         where('status', '==', statusMap[activeTab]),
-        where('paymentMethod', '==', 'bank_transfer'),
-        orderBy('createdAt', 'desc')
+        where('paymentMethod', '==', 'bank_transfer')
       ]);
-      setPayments(results);
+
+      // Sort in-memory to avoid needing a Firestore composite index
+      const sortedResults = results.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(a.createdAt);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(b.createdAt);
+        return dateB.getTime() - dateA.getTime();
+      });
+
+      setPayments(sortedResults);
     } catch (error) {
       console.error('Error fetching payments:', error);
       toast.error('Failed to load payments');
@@ -71,7 +78,7 @@ export default function AdminApprovalsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           paymentId,
-          adminId: user.id || user.uid,
+          adminId: user.id,
           adminName: user.displayName,
         }),
       });
@@ -100,7 +107,7 @@ export default function AdminApprovalsPage() {
         body: JSON.stringify({
           paymentId,
           reason,
-          adminId: user?.id || user?.uid,
+          adminId: user?.id,
           adminName: user?.displayName,
         }),
       });

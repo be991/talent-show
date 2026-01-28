@@ -58,7 +58,7 @@ export const updateDocument = async (collectionName: string, id: string, data: a
     const docRef = doc(db, collectionName, id);
     await updateDoc(docRef, {
       ...data,
-      updatedAt: new Date(),
+      updatedAt: data.updatedAt || new Date(),
     });
     return { id, ...data };
   } catch (error) {

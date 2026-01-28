@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   BarChart3, 
@@ -17,11 +17,53 @@ import {
 import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
 import { AdminGuard } from '@/components/guards/AdminGuard';
+import { useAuth } from '@/hooks/useAuth';
+import { auth } from '@/lib/firebase/config';
 
 const BG_WARM = '#EFF1EC';
 
 export default function AdminAnalyticsPage() {
+  const { user } = useAuth();
   const [timeRange, setTimeRange] = useState('Last 30 Days');
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        setLoading(true);
+        const idToken = await auth.currentUser?.getIdToken();
+        const response = await fetch('/api/admin/analytics', {
+          headers: { 'Authorization': `Bearer ${idToken}` }
+        });
+        const result = await response.json();
+        if (result.success) setData(result.data);
+      } catch (e) {
+        console.error('Analytics fetch failed', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (user) fetchStats();
+  }, [user]);
+
+  if (loading) {
+     return (
+        <AdminGuard>
+           <div className="min-h-screen pb-20 flex items-center justify-center" style={{ backgroundColor: BG_WARM }}>
+              <div className="flex flex-col items-center">
+                 <div className="w-8 h-8 border-4 border-green-600 border-t-transparent rounded-full animate-spin mb-4"/>
+                 <p className="text-xs font-black uppercase tracking-widest text-gray-400">Loading Intelligence...</p>
+              </div>
+           </div>
+        </AdminGuard>
+     );
+  }
+
+  const { revenue, tickets, avgOrder, chart, categories } = data || {};
+
+  // Find max value in chart for scaling
+  const maxChartVal = chart ? Math.max(...chart.map((c: any) => c.value)) : 100;
 
   return (
     <AdminGuard>
@@ -47,70 +89,68 @@ export default function AdminAnalyticsPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
+
         {/* KPI Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-           <KPICard label="Total Revenue" value="₦1.2M" trend="+12.5%" isUp={true} icon={<DollarSign/>} />
-           <KPICard label="Tickets Sold" value="156" trend="+8.2%" isUp={true} icon={<Users/>} />
-           <KPICard label="Conv. Rate" value="4.8%" trend="-1.2%" isUp={false} icon={<Target/>} />
-           <KPICard label="Avg. Order" value="₦7,692" trend="+5.0%" isUp={true} icon={<TrendingUp/>} />
+           <KPICard label="Total Revenue" value={`₦${(revenue?.total || 0).toLocaleString()}`} trend={revenue?.trend} isUp={true} icon={<DollarSign/>} />
+           <KPICard label="Tickets Sold" value={tickets?.total || 0} trend={tickets?.trend} isUp={true} icon={<Users/>} />
+           <KPICard label="Admission Rate" value={`${tickets?.total ? Math.round((tickets.admitted / tickets.total) * 100) : 0}%`} trend="Live" isUp={true} icon={<Target/>} />
+           <KPICard label="Avg. Order" value={`₦${Math.round(avgOrder?.value || 0).toLocaleString()}`} trend={avgOrder?.trend} isUp={true} icon={<TrendingUp/>} />
         </div>
 
-        {/* Charts Section (Placeholders) */}
+        {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
-           {/* Main Revenue Chart Placeholder */}
+           {/* Main Revenue Chart */}
            <div className="lg:col-span-8 bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-200 flex flex-col min-h-[450px]">
               <div className="flex items-center justify-between mb-8">
                  <div>
                     <h3 className="text-lg font-black text-gray-900">Revenue Trajectory</h3>
-                    <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Income over the past 30 days</p>
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-widest mt-1">Income over recent period</p>
                  </div>
                  <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-600"/> <span className="text-[10px] font-black">GROSS</span></div>
-                    <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-amber-400"/> <span className="text-[10px] font-black">NET</span></div>
                  </div>
               </div>
               <div className="flex-grow flex items-end justify-between gap-4 mt-12 bg-gray-50/50 rounded-[2rem] p-8 border border-dashed border-gray-200">
-                 {[40, 70, 45, 90, 65, 80, 55, 95, 85, 60, 75, 100].map((h, i) => (
-                    <motion.div 
-                      key={i} 
-                      initial={{ height: 0 }} 
-                      animate={{ height: `${h}%` }}
+                 {chart?.map((point: any, i: number) => {
+                    const heightPercent = maxChartVal > 0 ? (point.value / maxChartVal) * 100 : 0;
+                    return (
+                    <motion.div
+                      key={i}
+                      initial={{ height: 0 }}
+                      animate={{ height: `${heightPercent}%` }}
                       transition={{ delay: i * 0.05, duration: 1 }}
-                      className="w-full bg-gradient-to-t from-green-700 to-green-500 rounded-t-xl relative group"
+                      className="w-full bg-gradient-to-t from-green-700 to-green-500 rounded-t-xl relative group min-h-[10px]"
                     >
-                       <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-black px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                          ₦{(h*1000).toLocaleString()}
+                       <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-[10px] font-black px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity z-10 whitespace-nowrap">
+                          ₦{point.value.toLocaleString()}
+                          <br/>
+                          <span className="text-[9px] font-normal text-gray-300">{point.date}</span>
                        </div>
                     </motion.div>
-                 ))}
-              </div>
-              <div className="flex justify-between mt-6 px-4">
-                 {['Jan 01', 'Jan 10', 'Jan 20', 'Jan 30'].map(d => (
-                    <span key={d} className="text-[10px] font-black text-gray-300 uppercase tracking-widest">{d}</span>
-                 ))}
+                 )})}
               </div>
            </div>
 
-           {/* Distribution Placeholder */}
+           {/* Distribution */}
            <div className="lg:col-span-4 bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-200 flex flex-col">
               <h3 className="text-lg font-black text-gray-900 mb-2">Participant Mix</h3>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-8">Tickets by category</p>
-              
+
               <div className="flex-grow flex items-center justify-center relative">
                  <div className="w-48 h-48 rounded-full border-[20px] border-green-700 relative flex items-center justify-center">
-                    <div className="absolute inset-0 border-[20px] border-amber-400 rounded-full clip-path-half rotate-45" />
                     <div className="text-center">
-                       <p className="text-2xl font-black text-gray-900 leading-none">156</p>
+                       <p className="text-2xl font-black text-gray-900 leading-none">{tickets?.total || 0}</p>
                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">Total</p>
                     </div>
                  </div>
               </div>
 
               <div className="mt-8 space-y-4">
-                 <DistributionRow label="Audience Tickets" val="64%" color="bg-green-700" />
-                 <DistributionRow label="Contestant Entry" val="36%" color="bg-amber-400" />
-                 <DistributionRow label="VIP Access" val="0%" color="bg-purple-500" />
+                 {categories?.slice(0, 3).map((cat: any, i: number) => (
+                    <DistributionRow key={i} label={cat.label} val={`${Math.round((cat.count / (tickets?.total || 1)) * 100)}%`} color={i === 0 ? "bg-green-700" : "bg-amber-400"} />
+                 ))}
+                 {!categories?.length && <p className="text-sm text-gray-400 text-center">No categories data</p>}
               </div>
            </div>
         </div>
@@ -119,10 +159,16 @@ export default function AdminAnalyticsPage() {
         <section className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-200">
            <h3 className="text-lg font-black text-gray-900 mb-6">Contestant Categories</h3>
            <div className="space-y-6">
-              <CategoryBar label="Music & Singing" count={45} total={156} color="bg-blue-500" />
-              <CategoryBar label="Dance & Choreography" count={32} total={156} color="bg-pink-500" />
-              <CategoryBar label="Comedy / Spoken Word" count={18} total={156} color="bg-amber-500" />
-              <CategoryBar label="Drama & Performance" count={12} total={156} color="bg-green-500" />
+              {categories?.map((cat: any, i: number) => (
+                 <CategoryBar
+                    key={i}
+                    label={cat.label}
+                    count={cat.count}
+                    total={tickets?.total || 1}
+                    color={i % 2 === 0 ? "bg-blue-500" : "bg-pink-500"}
+                 />
+              ))}
+              {!categories?.length && <p className="text-gray-400 text-center py-4">No category data available yet.</p>}
            </div>
         </section>
       </main>

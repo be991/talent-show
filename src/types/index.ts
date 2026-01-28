@@ -31,6 +31,9 @@ export interface BaseTicket {
   numberOfTickets: number;
   totalAmount: number;
   paymentReference: string;
+  admittedAt?: Date;
+  admittedCount?: number;
+  admittedBy?: string;
   createdAt: Date;
   updatedAt: Date;
 }

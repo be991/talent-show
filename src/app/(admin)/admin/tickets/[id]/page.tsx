@@ -23,13 +23,16 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
-import { getMockTicketById } from '@/lib/mockData';
+import { getDocument, updateDocument } from '@/lib/firebase/firestore';
+import { toast } from 'sonner';
+import { serverTimestamp } from 'firebase/firestore'; 
 import { notFound, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { AdminGuard } from '@/components/guards/AdminGuard';
 
-// Theme Colors
+// ... imports remain ...
+
 const GREEN = '#2D5016';
 const BG_WARM = '#EFF1EC';
 
@@ -40,14 +43,61 @@ export default function AdminTicketDetailsPage({ params }: { params: Promise<{ i
   const [ticket, setTicket] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    const foundTicket = getMockTicketById(id);
-    if (foundTicket) {
-      setTicket(foundTicket);
-    }
-    setIsLoading(false);
+    const fetchTicket = async () => {
+      try {
+        const data = await getDocument('tickets', id);
+        if (data) {
+           // Handle Firestore timestamps
+           const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt || Date.now());
+           setTicket({ ...data, createdAt });
+        } else {
+           toast.error('Ticket not found');
+           // router.push('/admin/tickets'); // Optional redirect
+        }
+      } catch (error) {
+        console.error('Error fetching ticket', error);
+        toast.error('Failed to load ticket details');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchTicket();
   }, [id]);
+
+  const handleStatusUpdate = async (newStatus: string) => {
+    if (!ticket) return;
+    setIsUpdating(true);
+    try {
+        await updateDocument('tickets', id, { status: newStatus });
+        setTicket((prev: any) => ({ ...prev, status: newStatus }));
+        toast.success(`Ticket marked as ${newStatus}`);
+    } catch (error) {
+        toast.error('Failed to update status');
+    } finally {
+        setIsUpdating(false);
+    }
+  };
+
+  const handleMarkUsed = async () => {
+    if (!ticket) return;
+    setIsUpdating(true);
+    try {
+        await updateDocument('tickets', id, { 
+            admittedAt: serverTimestamp(),
+            admittedCount: (ticket.admittedCount || 0) + 1,
+            admittedBy: 'admin_panel'
+        });
+        setTicket((prev: any) => ({ ...prev, admittedAt: new Date() })); // Optimistic update
+        toast.success('Ticket marked as used');
+    } catch (error) {
+        toast.error('Failed to mark as used');
+    } finally {
+        setIsUpdating(false);
+    }
+  };
 
   if (!isLoading && !ticket) {
     return notFound();
@@ -217,10 +267,23 @@ export default function AdminTicketDetailsPage({ params }: { params: Promise<{ i
                 <div className="space-y-3">
                    {ticket.status === 'pending' && (
                       <>
-                        <Button fullWidth className="bg-green-600 hover:bg-green-700 border-none" leftIcon={<CheckCircle2 className="w-4 h-4" />}>
+                        <Button 
+                            fullWidth 
+                            className="bg-green-600 hover:bg-green-700 border-none" 
+                            leftIcon={isUpdating ? <RefreshCw className="w-4 h-4 animate-spin"/> : <CheckCircle2 className="w-4 h-4" />}
+                            onClick={() => handleStatusUpdate('verified')}
+                            disabled={isUpdating}
+                        >
                            Approve Ticket
                         </Button>
-                        <Button fullWidth variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" leftIcon={<XCircle className="w-4 h-4" />}>
+                        <Button 
+                            fullWidth 
+                            variant="outline" 
+                            className="text-red-600 border-red-200 hover:bg-red-50" 
+                            leftIcon={<XCircle className="w-4 h-4" />}
+                            onClick={() => handleStatusUpdate('rejected')}
+                            disabled={isUpdating}
+                        >
                            Reject Ticket
                         </Button>
                       </>
@@ -228,8 +291,14 @@ export default function AdminTicketDetailsPage({ params }: { params: Promise<{ i
                    <Button fullWidth variant="outline" leftIcon={<RefreshCw className="w-4 h-4" />}>
                       Resend Confirmation
                    </Button>
-                   <Button fullWidth variant="outline" leftIcon={<CheckCircle2 className="w-4 h-4" />}>
-                      Mark as Used
+                   <Button 
+                        fullWidth 
+                        variant="outline" 
+                        leftIcon={<CheckCircle2 className="w-4 h-4" />}
+                        onClick={handleMarkUsed}
+                        disabled={isUpdating || ticket.admittedAt}
+                   >
+                      {ticket.admittedAt ? 'Already Used' : 'Mark as Used'}
                    </Button>
                 </div>
              </div>

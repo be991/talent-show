@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Send, 
@@ -25,6 +25,8 @@ import { Badge } from '@/components/atoms/Badge';
 import { Textarea } from '@/components/atoms/Textarea';
 import Image from 'next/image';
 import { AdminGuard } from '@/components/guards/AdminGuard';
+import { auth } from '@/lib/firebase/config';
+import { toast } from 'sonner';
 
 // Theme Colors
 const GREEN = '#2D5016';
@@ -37,21 +39,16 @@ const TEMPLATES = [
   { id: 'delivery', name: 'Ticket Delivery', subject: 'Your Ticket is Ready', body: 'Hello {name}, your digital ticket for NGT10 is now available. Unique Code: {ticket_code}. Prepare for stardom!' },
 ];
 
-const RECIPIENT_FILTERS = [
-  { id: 'all', label: 'All Ticket Holders', count: 35 },
-  { id: 'contestant', label: 'Contestants Only', count: 15 },
-  { id: 'audience', label: 'Audience Only', count: 20 },
-  { id: 'verified', label: 'Verified Tickets', count: 30 },
-  { id: 'pending', label: 'Pending Transfers', count: 5 },
-];
-
-const MOCK_HISTORY = [
-  { id: 1, type: 'Event Reminder', recipients: 35, channel: 'Both', sentBy: 'Debrain', date: '2024-01-20 10:30', status: 'Sent', rate: '35/35' },
-  { id: 2, type: 'Ticket Delivery', recipients: 15, channel: 'WhatsApp', sentBy: 'Sarah', date: '2024-01-18 14:15', status: 'Sent', rate: '14/15' },
-  { id: 3, type: 'Payment Follow-up', recipients: 5, channel: 'Email', sentBy: 'John', date: '2024-01-15 09:00', status: 'Failed', rate: '2/5' },
+const RECIPIENT_FILTER_DEFAULTS = [
+  { id: 'all', label: 'All Ticket Holders', count: 0 },
+  { id: 'contestant', label: 'Contestants Only', count: 0 },
+  { id: 'audience', label: 'Audience Only', count: 0 },
+  { id: 'verified', label: 'Verified Tickets', count: 0 },
+  { id: 'pending', label: 'Pending Transfers', count: 0 },
 ];
 
 export default function AdminMessagingPage() {
+  const [filters, setFilters] = useState(RECIPIENT_FILTER_DEFAULTS);
   const [selectedFilters, setSelectedFilters] = useState<string[]>(['all']);
   const [channel, setChannel] = useState<'whatsapp' | 'email' | 'both'>('whatsapp');
   const [template, setTemplate] = useState('');
@@ -61,6 +58,62 @@ export default function AdminMessagingPage() {
   const [isSending, setIsSending] = useState(false);
   const [sendProgress, setSendProgress] = useState(0);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [recipients, setRecipients] = useState<any[]>([]);
+  const [whatsappQueue, setWhatsappQueue] = useState<any[]>([]);
+  const [currentWhatsappIndex, setCurrentWhatsappIndex] = useState(0);
+  const [history, setHistory] = useState<any[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoadingHistory(true);
+      const idToken = await auth.currentUser?.getIdToken();
+      if (!idToken) return;
+
+      const headers = { 'Authorization': `Bearer ${idToken}` };
+
+      // Fetch History
+      const histRes = await fetch('/api/admin/messaging/history', { headers });
+      const histData = await histRes.json();
+      if (histData.success) {
+        setHistory(histData.history);
+      }
+
+      // Fetch Stats
+      const statsRes = await fetch('/api/admin/messaging/stats', { headers });
+      const statsData = await statsRes.json();
+      if (statsData.success) {
+        setFilters(prev => prev.map(f => ({
+            ...f,
+            count: statsData.stats[f.id] || 0
+        })));
+      }
+
+    } catch (err) {
+      console.error('Failed to fetch data:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+  // ... (keep handleTemplateChange, insertVariable, handleSend, handleNextWhatsapp, skipWhatsapp, sendWhatsapp) ...
+
+  const totalSelected = useMemo(() => {
+     let total = 0;
+     // Simple logic: if 'all' selected, return 'all' count. Else sum others (but arguably they overlap).
+     // For now, if 'all', use 'all' count. If specific, sum specific unique if possible, but simpler to just show 'all' count if 'all' is selected.
+     if (selectedFilters.includes('all')) {
+        return filters.find(f => f.id === 'all')?.count || 0;
+     }
+     
+     // Be careful of overlapping if we just sum. But for simple UI estimates:
+     // If user selects 'contestant' and 'audience', that matches 'all' (usually).
+     // Since we don't do complex server-side pre-calculation of overlap here yet:
+     return selectedFilters.reduce((acc, fid) => acc + (filters.find(f => f.id === fid)?.count || 0), 0);
+  }, [selectedFilters, filters]);
 
   const handleTemplateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const t = TEMPLATES.find(temp => temp.id === e.target.value);
@@ -79,26 +132,93 @@ export default function AdminMessagingPage() {
     setMessage(prev => prev + `{${variable}}`);
   };
 
-  const handleSend = () => {
+  const handleSend = async () => {
+    if (!subject && (channel === 'email' || channel === 'both')) {
+      toast.error('Please enter a subject line for email');
+      return;
+    }
+    if (!message) {
+      toast.error('Please enter a message body');
+      return;
+    }
+
     setIsSending(true);
     setSendProgress(0);
-    const interval = setInterval(() => {
-      setSendProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            setIsSending(false);
-            setIsSuccess(true);
-            setTimeout(() => setIsSuccess(false), 3000);
-          }, 500);
-          return 100;
-        }
-        return prev + 5;
+    
+    try {
+      const idToken = await auth.currentUser?.getIdToken();
+      const response = await fetch('/api/admin/messaging/blast', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${idToken}`
+        },
+        body: JSON.stringify({
+          filters: selectedFilters,
+          channel,
+          subject,
+          messageBody: message
+        })
       });
-    }, 100);
+
+      const result = await response.json();
+
+      if (!result.success) {
+        // Handle Resend onboarding limitation specifically
+        if (result.error?.includes('testing email address') || result.error?.includes('onboarding')) {
+          throw new Error('Resend Restriction: Since you are using a trial account, you can only send emails to yourself. Please verify your domain in Resend to send to others.');
+        }
+        throw new Error(result.error || 'Failed to send broadcast');
+      }
+
+      setSendProgress(100);
+      setRecipients(result.recipients || []);
+      
+      if (channel === 'whatsapp' || channel === 'both') {
+        setWhatsappQueue(result.recipients || []);
+        setCurrentWhatsappIndex(0);
+      }
+
+      setTimeout(() => {
+        setIsSending(false);
+        setIsSuccess(true);
+        fetchData();
+        setTimeout(() => setIsSuccess(false), 3000);
+      }, 500);
+
+      toast.success(`Successfully processed ${result.sentCount} recipients`);
+
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || 'Something went wrong while sending');
+      setIsSending(false);
+    }
   };
 
-  const totalSelected = selectedFilters.includes('all') ? 35 : 15; // Rough mock logic
+  const handleNextWhatsapp = () => {
+    if (currentWhatsappIndex < whatsappQueue.length - 1) {
+      setCurrentWhatsappIndex(prev => prev + 1);
+    } else {
+      setWhatsappQueue([]);
+    }
+  };
+
+  const skipWhatsapp = () => {
+    handleNextWhatsapp();
+  };
+
+  const sendWhatsapp = (recipient: any) => {
+    const text = message
+      .replace(/{name}/g, recipient.name || '')
+      .replace(/{ticket_code}/g, recipient.ticket_code || '')
+      .replace(/{event_date}/g, recipient.event_date || '')
+      .replace(/{event_venue}/g, recipient.event_venue || '');
+    
+    const url = `https://wa.me/${recipient.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+    handleNextWhatsapp();
+  };
+
 
   return (
     <AdminGuard>
@@ -132,7 +252,7 @@ export default function AdminMessagingPage() {
                     1. Select Recipients
                  </h3>
                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {RECIPIENT_FILTERS.map(filter => (
+                    {filters.map(filter => (
                        <button 
                          key={filter.id}
                          onClick={() => setSelectedFilters(prev => 
@@ -298,7 +418,7 @@ export default function AdminMessagingPage() {
            {/* RIGHT: HISTORY */}
            <div className="lg:col-span-4 space-y-8">
               <section className="bg-white rounded-[2.5rem] shadow-sm border border-gray-200 flex flex-col min-h-[600px]">
-                 <div className="p-8 border-b border-gray-100">
+                  <div className="p-8 border-b border-gray-100">
                     <h3 className="font-bold text-gray-900 text-lg flex items-center gap-2">
                        <History className="w-5 h-5 text-gray-400" />
                        Recent Broadcasts
@@ -306,32 +426,43 @@ export default function AdminMessagingPage() {
                  </div>
                  
                  <div className="flex-grow p-4 space-y-3">
-                    {MOCK_HISTORY.map(log => (
-                       <div 
-                         key={log.id} 
-                         className="p-5 rounded-[2rem] bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-sm transition-all cursor-pointer group"
-                       >
-                          <div className="flex justify-between items-start mb-3">
-                             <div className="flex items-center gap-2">
-                                {log.channel === 'WhatsApp' ? <MessageSquare size={14} className="text-green-600" /> : <Mail size={14} className="text-blue-600" />}
-                                <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{log.channel}</span>
-                             </div>
-                             <Badge variant={log.status === 'Sent' ? 'success' : 'error'} className="text-[10px]">
-                                {log.status}
-                             </Badge>
-                          </div>
-                          <h4 className="font-bold text-gray-900 group-hover:text-green-700 transition-colors mb-1">{log.type}</h4>
-                          <div className="flex items-center justify-between mt-4">
-                             <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-gray-200 border-2 border-white overflow-hidden relative">
-                                   <Image src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${log.sentBy}`} alt="" fill />
-                                </div>
-                                <span className="text-xs text-gray-500 font-medium">{log.sentBy}</span>
-                             </div>
-                             <span className="text-[10px] font-bold text-gray-400">{log.rate} Sent</span>
-                          </div>
-                       </div>
-                    ))}
+                    {loadingHistory ? (
+                      <div className="flex items-center justify-center p-12">
+                         <div className="animate-spin w-6 h-6 border-2 border-green-700 border-t-transparent rounded-full" />
+                      </div>
+                    ) : history.length === 0 ? (
+                      <div className="text-center p-12 text-gray-400">
+                         <History className="w-12 h-12 mx-auto mb-4 opacity-10" />
+                         <p className="text-sm">No recent broadcasts</p>
+                      </div>
+                    ) : (
+                      history.map((log: any) => (
+                        <div 
+                          key={log.id} 
+                          className="p-5 rounded-[2rem] bg-gray-50 border border-gray-100 hover:bg-white hover:shadow-sm transition-all cursor-pointer group"
+                        >
+                           <div className="flex justify-between items-start mb-3">
+                              <div className="flex items-center gap-2">
+                                 {log.channel === 'whatsapp' ? <MessageSquare size={14} className="text-green-600" /> : <Mail size={14} className="text-blue-600" />}
+                                 <span className="text-[10px] font-black uppercase text-gray-400 tracking-widest">{log.channel}</span>
+                              </div>
+                              <Badge variant={log.status === 'Sent' ? 'success' : 'error'} className="text-[10px]">
+                                 {log.status}
+                              </Badge>
+                           </div>
+                           <h4 className="font-bold text-gray-900 group-hover:text-green-700 transition-colors mb-1 truncate">{log.type}</h4>
+                           <div className="flex items-center justify-between mt-4">
+                              <div className="flex items-center gap-2">
+                                 <div className="w-6 h-6 rounded-full bg-gray-200 border-2 border-white overflow-hidden relative">
+                                    <Image src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${log.sentBy}`} alt="" fill unoptimized />
+                                 </div>
+                                 <span className="text-xs text-gray-500 font-medium truncate max-w-[80px]">{log.sentBy?.split('@')[0]}</span>
+                              </div>
+                              <span className="text-[10px] font-bold text-gray-400">{log.recipients} Recipients</span>
+                           </div>
+                        </div>
+                      ))
+                    )}
                  </div>
 
                  <div className="p-8 border-t border-gray-100 text-center">
@@ -415,6 +546,65 @@ export default function AdminMessagingPage() {
          )}
       </AnimatePresence>
 
+      {/* WhatsApp Queue Modal */}
+      <AnimatePresence>
+         {whatsappQueue.length > 0 && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-6 backdrop-blur-md bg-green-900/20">
+               <motion.div 
+                 initial={{ y: 20, opacity: 0 }}
+                 animate={{ y: 0, opacity: 1 }}
+                 className="bg-white rounded-[2.5rem] p-8 max-w-md w-full shadow-2xl border border-green-100"
+               >
+                  <div className="flex justify-between items-center mb-6">
+                     <h3 className="font-black text-xl text-gray-900">WhatsApp Dispatch</h3>
+                     <Badge className="bg-green-100 text-green-700 border-none">{currentWhatsappIndex + 1} of {whatsappQueue.length}</Badge>
+                  </div>
+
+                  <div className="bg-gray-50 rounded-2xl p-6 mb-8 border border-gray-100">
+                     <p className="text-xs font-black text-gray-400 uppercase mb-2">Recipient</p>
+                     <p className="font-bold text-lg text-gray-900">{whatsappQueue[currentWhatsappIndex].name}</p>
+                     <p className="text-sm text-gray-500">{whatsappQueue[currentWhatsappIndex].phone}</p>
+                  </div>
+
+                  <div className="space-y-3">
+                     <Button 
+                       fullWidth 
+                       onClick={() => sendWhatsapp(whatsappQueue[currentWhatsappIndex])}
+                       className="h-16 rounded-2xl bg-green-600 text-lg shadow-lg shadow-green-200 border-none"
+                       style={{ backgroundColor: GREEN }}
+                     >
+                        <MessageSquare className="mr-2" />
+                        Send Message
+                     </Button>
+                     <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          fullWidth 
+                          onClick={skipWhatsapp}
+                          className="rounded-xl h-12 text-gray-400 border-gray-100"
+                        >
+                           Skip
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          fullWidth 
+                          onClick={() => setWhatsappQueue([])}
+                          className="rounded-xl h-12 text-red-400 border-gray-100"
+                        >
+                           Cancel Queue
+                        </Button>
+                     </div>
+                  </div>
+                  
+                  <p className="mt-6 text-[10px] text-gray-400 text-center leading-relaxed">
+                     Clicking "Send Message" will open WhatsApp in a new tab.<br/>
+                     Come back here to trigger the next message.
+                  </p>
+               </motion.div>
+            </div>
+         )}
+      </AnimatePresence>
+
       {/* Success Notification */}
       <AnimatePresence>
          {isSuccess && (
@@ -429,7 +619,7 @@ export default function AdminMessagingPage() {
                </div>
                <div>
                   <p className="font-black text-sm">Campaign Launched!</p>
-                  <p className="text-[10px] text-gray-400">Message sent successfully to recipients.</p>
+                  <p className="text-[10px] text-gray-400">Message processed successfully.</p>
                </div>
             </motion.div>
          )}

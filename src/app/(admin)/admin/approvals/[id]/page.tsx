@@ -18,12 +18,15 @@ import {
   History,
   CheckSquare
 } from 'lucide-react';
-import { mockPayments, mockContestantTickets, mockAudienceTickets } from '@/lib/mockData';
+import { getDocument, updateDocument, queryDocuments } from '@/lib/firebase/firestore';
+import { toast } from 'sonner';
+import { where } from 'firebase/firestore'; // Import 'where' from firebase/firestore
+
 import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
 import Image from 'next/image';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, useRouter } from 'next/navigation';
 import { AdminGuard } from '@/components/guards/AdminGuard';
 
 // Theme Colors
@@ -33,8 +36,13 @@ const BG_WARM = '#EFF1EC';
 
 export default function ApprovalDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
+  
   const [payment, setPayment] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  
   const [checklist, setChecklist] = useState({
     amount: false,
     account: false,
@@ -43,21 +51,72 @@ export default function ApprovalDetailsPage({ params }: { params: Promise<{ id: 
   });
 
   useEffect(() => {
-    const found = mockPayments.find(p => p.id === id);
-    if (found) setPayment(found);
+    const fetchPayment = async () => {
+      try {
+        const data = await getDocument('payments', id);
+        if (data) {
+            setPayment(data);
+        } else {
+            toast.error('Payment not found');
+        }
+      } catch (err) {
+        toast.error('Error fetching payment');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPayment();
   }, [id]);
 
-  if (!payment && id !== 'payment-2') { // Mocking payment-2 if not found in filtered list
-    // In real app, we fetch from DB. For mock, we'll try to find or show notFound
-    if (!payment) return <div className="p-20 text-center">Loading or Payment Not Found...</div>;
-  }
+  const handleApprove = async () => {
+    setProcessing(true);
+    try {
+        // 1. Update Payment
+        await updateDocument('payments', id, { status: 'success' });
+        
+        // 2. Find and Update Ticket (if linked)
+        // Try finding ticket by paymentId or user
+        const tickets = await queryDocuments('tickets', [where('paymentId', '==', id)]);
+        if (tickets.length > 0) {
+            await updateDocument('tickets', tickets[0].id, { status: 'verified' });
+            toast.success('Payment approved and Ticket verified!');
+        } else {
+            toast.success('Payment approved (No linked ticket found)');
+        }
+        
+        setPayment((prev: any) => ({ ...prev, status: 'success' }));
+        router.refresh();
+    } catch (error) {
+        console.error(error);
+        toast.error('Approval failed');
+    } finally {
+        setProcessing(false);
+    }
+  };
 
-  // Fallback for mock if specific ID missing
-  const data = payment || mockPayments.find(p => p.paymentMethod === 'bank_transfer') || mockPayments[0];
+  const handleReject = async () => {
+    if (!window.confirm('Reject this payment?')) return;
+    setProcessing(true);
+    try {
+        await updateDocument('payments', id, { status: 'rejected' });
+        setPayment((prev: any) => ({ ...prev, status: 'rejected' }));
+        toast.success('Payment rejected');
+    } catch (error) {
+        toast.error('Rejection failed');
+    } finally {
+        setProcessing(false);
+    }
+  };
 
   const toggleCheck = (key: keyof typeof checklist) => {
     setChecklist(prev => ({ ...prev, [key]: !prev[key] }));
   };
+  
+  if (loading) return <div className="p-20 text-center">Loading...</div>;
+  if (!payment) return notFound();
+
+  // Use 'payment' instead of 'data' var for consistency with fetch
+  const data = payment; 
 
   return (
     <AdminGuard>
@@ -87,16 +146,16 @@ export default function ApprovalDetailsPage({ params }: { params: Promise<{ id: 
           <div className="hidden md:flex items-center gap-6">
              <div className="text-right">
                 <p className="text-xs text-gray-400 font-bold uppercase">Amount to Verify</p>
-                <p className="text-2xl font-black text-green-700">₦{data.amount.toLocaleString()}</p>
+                <p className="text-2xl font-black text-green-700">₦{Number(data.amount).toLocaleString()}</p>
              </div>
              <div className="h-10 w-px bg-gray-200" />
              <div className="flex gap-2">
                 {data.status === 'pending' && (
                   <>
-                    <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" leftIcon={<XCircle className="w-4 h-4" />}>
+                    <Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" leftIcon={<XCircle className="w-4 h-4" />} onClick={handleReject} disabled={processing}>
                        Reject
                     </Button>
-                    <Button className="bg-green-600 hover:bg-green-700 text-white border-none" leftIcon={<CheckCircle2 className="w-4 h-4" />}>
+                    <Button className="bg-green-600 hover:bg-green-700 text-white border-none" leftIcon={<CheckCircle2 className="w-4 h-4" />} onClick={handleApprove} disabled={processing}>
                        Approve
                     </Button>
                   </>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, 
@@ -19,24 +19,43 @@ import { Button } from '@/components/atoms/Button';
 import { Badge } from '@/components/atoms/Badge';
 import Image from 'next/image';
 import { AdminGuard } from '@/components/guards/AdminGuard';
+import { useAuth } from '@/hooks/useAuth';
+import { auth } from '@/lib/firebase/config';
+import { toast } from 'sonner';
 
 const BG_WARM = '#EFF1EC';
 
-const MOCK_USERS = [
-  { id: 1, name: 'Tunde Afolayan', email: 'tunde@unilag.edu.ng', role: 'admin', tickets: 2, spent: 11500, joined: '2024-01-10' },
-  { id: 2, name: 'Sarah Omotola', email: 'sarah.o@gmail.com', role: 'user', tickets: 5, spent: 7500, joined: '2024-01-12' },
-  { id: 3, name: 'Chinaza Okoro', email: 'chi.ok@outlook.com', role: 'user', tickets: 1, spent: 10000, joined: '2024-01-15' },
-  { id: 4, name: 'Ahmed Musa', email: 'ahmed.m@yahoo.com', role: 'user', tickets: 0, spent: 0, joined: '2024-01-18' },
-  { id: 5, name: 'Fatima Bello', email: 'f.bello@gmail.com', role: 'admin', tickets: 1, spent: 1500, joined: '2024-01-20' },
-];
-
 export default function AdminUsersPage() {
+  const { user } = useAuth();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredUsers = MOCK_USERS.filter(u => {
-    const matchesSearch = u.name.toLowerCase().includes(search.toLowerCase()) || 
-                          u.email.toLowerCase().includes(search.toLowerCase());
+  useEffect(() => {
+    const fetchUsers = async () => {
+        try {
+            const idToken = await auth.currentUser?.getIdToken();
+            const res = await fetch('/api/admin/users', {
+                headers: { 'Authorization': `Bearer ${idToken}` }
+            });
+            const data = await res.json();
+            if (data.success) {
+                setUsers(data.users);
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error('Failed to load users');
+        } finally {
+            setLoading(false);
+        }
+    };
+    if (user) fetchUsers();
+  }, [user]);
+
+  const filteredUsers = users.filter((u: any) => {
+    const matchesSearch = (u.name || '').toLowerCase().includes(search.toLowerCase()) || 
+                          (u.email || '').toLowerCase().includes(search.toLowerCase());
     const matchesRole = roleFilter === 'All' || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
@@ -87,7 +106,7 @@ export default function AdminUsersPage() {
            <div className="lg:col-span-4 bg-green-700 p-6 rounded-[2rem] shadow-lg flex items-center justify-between text-white">
               <div>
                  <p className="text-xs font-black uppercase tracking-widest text-green-200 mb-1">Active Accounts</p>
-                 <h3 className="text-3xl font-black">1,248</h3>
+                 <h3 className="text-3xl font-black">{users.length}</h3>
               </div>
               <Users size={40} className="text-green-500/50" />
            </div>
@@ -95,7 +114,7 @@ export default function AdminUsersPage() {
 
         {/* User List */}
         <div className="space-y-4">
-           {filteredUsers.map((u, i) => (
+           {loading ? <div className="text-center py-10">Loading directory...</div> : filteredUsers.map((u, i) => (
               <motion.div 
                 key={u.id}
                 initial={{ opacity: 0, x: -20 }}
@@ -104,7 +123,7 @@ export default function AdminUsersPage() {
                 className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-200 flex flex-col md:flex-row items-center gap-6 group hover:shadow-xl hover:border-green-200 transition-all cursor-pointer"
               >
                  <div className="w-16 h-16 rounded-[1.5rem] bg-gray-100 overflow-hidden relative border-2 border-white shadow-md flex-shrink-0">
-                    <Image src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${u.email}`} alt="" fill />
+                    <Image src={u.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.email}`} alt="" fill />
                  </div>
                  
                  <div className="flex-grow text-center md:text-left">
@@ -143,6 +162,7 @@ export default function AdminUsersPage() {
                  </div>
               </motion.div>
            ))}
+           {!loading && filteredUsers.length === 0 && <p className="text-center py-10 text-gray-400">No users found matching your search.</p>}
         </div>
       </main>
       </div>

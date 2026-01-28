@@ -121,6 +121,7 @@ export default function AdminDashboard() {
                   src={user?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=Admin`} 
                   alt="Admin" 
                   fill 
+                  unoptimized
                   className="object-cover"
                 />
               </div>
@@ -233,6 +234,7 @@ export default function AdminDashboard() {
                                     src={ticket.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${ticket.userId}`} 
                                     alt="" 
                                     fill 
+                                    unoptimized
                                     className="object-cover"
                                   />
                                 </div>

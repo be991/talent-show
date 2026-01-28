@@ -38,6 +38,7 @@
     "react-firebase-hooks": "^5.1.1",
     "react-hook-form": "^7.71.1",
     "react-paystack": "^6.0.0",
+    "react-qr-reader": "^3.0.0-beta-1",
     "react-qr-scanner": "^1.0.0-alpha.11",
     "recharts": "^3.6.0",
     "resend": "^6.8.0",

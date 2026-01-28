@@ -95,3 +95,55 @@ export async function sendEventReminder(to: string, eventData: any) {
     console.error('Error sending event reminder email:', error);
   }
 }
+
+export async function sendBroadcastEmail(recipients: { email: string; name: string; [key: string]: any }[], subject: string, messageBody: string) {
+  try {
+    const batch = recipients.map(recipient => {
+      let personalizedBody = messageBody;
+      Object.keys(recipient).forEach(key => {
+        const regex = new RegExp(`{${key}}`, 'g');
+        personalizedBody = personalizedBody.replace(regex, recipient[key]);
+      });
+
+      return {
+        from: `NGT10 Announcements <${FROM_EMAIL}>`,
+        to: [recipient.email],
+        subject: subject,
+        html: `<div style="font-family: sans-serif; line-height: 1.6; color: #333;">
+                <div style="background-color: #2D5016; padding: 20px; text-align: center;">
+                  <h1 style="color: white; margin: 0; font-size: 24px;">NGT10 STARDOM</h1>
+                </div>
+                <div style="padding: 30px; background-color: #f9f9f9;">
+                  <h2 style="color: #2D5016; margin-top: 0;">${subject}</h2>
+                  <div style="white-space: pre-wrap;">${personalizedBody}</div>
+                </div>
+                <div style="padding: 20px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee;">
+                  &copy; 2024 NUTESA Got Talent Season 10. All rights reserved.
+                </div>
+              </div>`,
+      };
+    });
+
+    // Resend batch limit is 100 emails per batch call
+    const chunks = [];
+    for (let i = 0; i < batch.length; i += 100) {
+      chunks.push(batch.slice(i, i + 100));
+    }
+
+    const results = [];
+    for (const chunk of chunks) {
+      // Correct API is resend.batch.send (singular)
+      const { data, error } = await resend.batch.send(chunk);
+      if (error) {
+        console.error('Resend Batch Error:', error);
+        throw error;
+      }
+      results.push(data);
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Error sending broadcast email:', error);
+    throw error;
+  }
+}

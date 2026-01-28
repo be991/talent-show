@@ -4,8 +4,8 @@ import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
 import { toast } from 'sonner';
 
 // Theme colors matching landing page
@@ -13,21 +13,25 @@ const GREEN = '#2D5016';
 const BG_CREAM = '#EAECE6';
 const BG_WARM = '#EFF1EC';
 
-export default function SignInPage() {
+function SignInContent() {
   const { user, loading, signIn, error: authError, isAdmin } = useAuth();
   const [isSigningIn, setIsSigningIn] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectPath = searchParams.get('redirect');
 
   // Redirect if already authenticated
   useEffect(() => {
     if (!loading && user) {
-      if (isAdmin) {
+      if (redirectPath) {
+        router.push(redirectPath);
+      } else if (isAdmin) {
         router.push('/admin');
       } else {
         router.push('/dashboard');
       }
     }
-  }, [user, loading, isAdmin, router]);
+  }, [user, loading, isAdmin, router, redirectPath]);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -139,5 +143,17 @@ export default function SignInPage() {
         </div>
       </motion.div>
     </main>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-warm">
+        <div className="animate-spin w-8 h-8 border-2 border-green-700 border-t-transparent rounded-full" />
+      </div>
+    }>
+      <SignInContent />
+    </Suspense>
   );
 }

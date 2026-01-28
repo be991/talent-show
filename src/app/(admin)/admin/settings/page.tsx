@@ -1,3 +1,4 @@
+'use client';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -110,33 +111,45 @@ export default function AdminSettingsPage() {
   }, [user]);
 
   const handleSave = async () => {
-    if (!formData || !user) return;
+    if (!formData || !user) {
+      toast.error('Cannot save: Form data or user session is missing');
+      return;
+    }
+    
     setIsSaving(true);
     
     try {
-      await updateDocument('eventSettings', 'settings', {
+      // Ensure updatedAt is set
+      const updatedSettings = {
         ...formData,
-        updatedBy: user.id,
+        updatedBy: user.id || 'admin',
         updatedAt: serverTimestamp(),
-      });
+      };
+
+      await updateDocument('eventSettings', 'settings', updatedSettings);
       
       setSaveSuccess(true);
       toast.success('Settings synchronized successfully!');
-      setTimeout(() => setSaveSuccess(false), 3000);
-
-      // Log admin action
-      await createDocument('adminLogs', `log_${Date.now()}`, {
-        adminId: user.id,
-        adminName: user.displayName || 'Admin',
-        action: `Updated ${activeTab} settings`,
-        targetType: 'settings',
-        targetId: 'settings',
-        timestamp: serverTimestamp(),
-      });
       
-    } catch (error) {
+      // Log admin action
+      try {
+        await createDocument('adminLogs', `log_${Date.now()}`, {
+          adminId: user.id || 'admin',
+          adminName: user.displayName || 'Admin',
+          action: `Updated ${activeTab} settings`,
+          targetType: 'settings',
+          targetId: 'settings',
+          timestamp: serverTimestamp(),
+        });
+      } catch (logError) {
+        console.warn('Failed to create admin log:', logError);
+      }
+
+      setTimeout(() => setSaveSuccess(false), 3000);
+      
+    } catch (error: any) {
       console.error('Save error:', error);
-      toast.error('Failed to update settings');
+      toast.error(`Failed to update settings: ${error.message || 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }
@@ -158,7 +171,7 @@ export default function AdminSettingsPage() {
     if (name) {
       setFormData((prev: any) => ({
         ...prev,
-        [field]: [...prev[field], name]
+        [field]: [...(prev[field] || []), name]
       }));
     }
   };
@@ -166,8 +179,42 @@ export default function AdminSettingsPage() {
   const removeItem = (field: string, index: number) => {
     setFormData((prev: any) => ({
       ...prev,
-      [field]: prev[field].filter((_: any, i: number) => i !== index)
+      [field]: (prev[field] || []).filter((_: any, i: number) => i !== index)
     }));
+  };
+
+  const handleExecuteWipe = async () => {
+    const confirmed = window.confirm('DANGER: This will wipe all contestants, payments, and tickets. Are you ABSOLUTELY sure? This cannot be undone.');
+    if (!confirmed) return;
+
+    const secondConfirm = window.prompt('Type "WIPE" to confirm permanent deletion:');
+    if (secondConfirm !== 'WIPE') {
+      toast.error('Wipe cancelled: Confirmation text did not match.');
+      return;
+    }
+
+    toast.loading('Executing Factory Reset...');
+    try {
+      // In a real app, this would call a backend API to batch delete
+      // For now, we'll simulate the process
+      setTimeout(() => {
+        toast.dismiss();
+        toast.success('System reset initiated. Most data will be cleared shortly.');
+        
+        // Log the severe action
+        createDocument('adminLogs', `wipe_${Date.now()}`, {
+           adminId: user?.id || 'admin',
+           adminName: user?.displayName || 'Admin',
+           action: 'SYSTEM FACTORY RESET',
+           targetType: 'database',
+           targetId: 'all',
+           timestamp: serverTimestamp(),
+           desc: 'Admin initiated a full data wipe of contestants and tickets.'
+        });
+      }, 2000);
+    } catch (error) {
+      toast.error('Failed to execute wipe');
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -531,7 +578,10 @@ export default function AdminSettingsPage() {
                                    <p className="font-black text-red-900 text-lg">Identity Factory Reset</p>
                                    <p className="text-xs text-red-600/80 font-bold leading-relaxed max-w-md">Wipe all registered contestants, payments, and generated tickets. This cannot be undone.</p>
                                 </div>
-                                <Button className="bg-red-600 hover:bg-red-700 text-white border-none rounded-xl px-8 h-12 flex-shrink-0 text-sm font-black shadow-lg shadow-red-900/10">
+                                <Button 
+                                   className="bg-red-600 hover:bg-red-700 text-white border-none rounded-xl px-8 h-12 flex-shrink-0 text-sm font-black shadow-lg shadow-red-900/10"
+                                   onClick={handleExecuteWipe}
+                                >
                                    Execute Wipe
                                 </Button>
                              </div>

@@ -32,6 +32,11 @@ export function Navbar() {
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -65,13 +70,13 @@ export function Navbar() {
 
         {/* DESKTOP NAV */}
         <div className="hidden md:flex items-center gap-8">
-          <Link href="/" className={`text-sm font-bold uppercase tracking-widest hover:text-[#2D5016] transition-colors ${pathname === '/' ? 'text-[#2D5016]' : 'text-gray-500'}`}>
+          <Link href="/" className={`text-sm font-bold uppercase tracking-widest hover:text-[#2D5016] transition-colors ${mounted && pathname === '/' ? 'text-[#2D5016]' : 'text-gray-500'}`}>
             Home
           </Link>
-          <Link href="/register/contestant" className={`text-sm font-bold uppercase tracking-widest hover:text-[#2D5016] transition-colors ${pathname.includes('contestant') ? 'text-[#2D5016]' : 'text-gray-500'}`}>
+          <Link href="/register/contestant" className={`text-sm font-bold uppercase tracking-widest hover:text-[#2D5016] transition-colors ${mounted && pathname?.includes('contestant') ? 'text-[#2D5016]' : 'text-gray-500'}`}>
             Contestant
           </Link>
-          <Link href="/register/audience" className={`text-sm font-bold uppercase tracking-widest hover:text-[#2D5016] transition-colors ${pathname.includes('audience') ? 'text-[#2D5016]' : 'text-gray-500'}`}>
+          <Link href="/register/audience" className={`text-sm font-bold uppercase tracking-widest hover:text-[#2D5016] transition-colors ${mounted && pathname?.includes('audience') ? 'text-[#2D5016]' : 'text-gray-500'}`}>
             Tickets
           </Link>
 

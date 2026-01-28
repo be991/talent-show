@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
@@ -14,17 +14,18 @@ interface AuthGuardProps {
 export function AuthGuard({ children, requireAdmin = false }: AuthGuardProps) {
   const { user, loading, isAdmin } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     if (!loading) {
       if (!user) {
-        router.push('/signin');
+        router.push(`/signin?redirect=${encodeURIComponent(pathname)}`);
       } else if (requireAdmin && !isAdmin) {
         toast.error('Unauthorized access. Admin privileges required.');
         router.push('/dashboard');
       }
     }
-  }, [user, loading, isAdmin, requireAdmin, router]);
+  }, [user, loading, isAdmin, requireAdmin, router, pathname]);
 
   if (loading) {
     return (

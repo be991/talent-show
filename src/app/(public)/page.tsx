@@ -22,6 +22,8 @@ import {
 } from 'lucide-react';
 import { useRef, useEffect, useState } from 'react';
 import Image from 'next/image';
+import { useAuth } from '@/hooks/useAuth';
+import { useRouter } from 'next/navigation';
 
 // Theme colors
 const GREEN = '#2D5016';
@@ -302,6 +304,9 @@ function CursorGlow() {
 
 // ========== MAIN COMPONENT ==========
 export default function LandingPage() {
+  const { user, isAdmin } = useAuth();
+  const router = useRouter();
+
   const heroRef = useRef<HTMLDivElement>(null);
   const [heroInView, setHeroInView] = useState(false);
   
@@ -318,6 +323,19 @@ export default function LandingPage() {
     const timer = setTimeout(() => setHeroInView(true), 500);
     return () => clearTimeout(timer);
   }, []);
+
+  const handleNavigation = (path: string) => {
+    if (isAdmin) {
+      router.push('/admin');
+      return;
+    }
+
+    if (user) {
+      router.push(path);
+    } else {
+      router.push(`/signin?redirect=${path}`);
+    }
+  };
 
   // Unsplash images (free to use)
   const performerImages = [
@@ -486,7 +504,7 @@ export default function LandingPage() {
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
             <MagneticButton 
-              onClick={() => console.log('Get Your Ticket clicked')}
+              onClick={() => handleNavigation('/register/audience')}
               className="group relative px-10 py-5 text-gray-900 font-bold text-lg rounded-full overflow-hidden border-2 shadow-lg"
               style={{ borderColor: GREEN, backgroundColor: BG_CREAM }}
             >
@@ -504,7 +522,7 @@ export default function LandingPage() {
             </MagneticButton>
             
             <MagneticButton 
-              onClick={() => console.log('Register as Contestant clicked')}
+              onClick={() => handleNavigation('/register/contestant')}
               className="group relative px-10 py-5 text-white font-bold text-lg rounded-full overflow-hidden shadow-lg"
               style={{ backgroundColor: GREEN }}
             >
@@ -756,7 +774,7 @@ export default function LandingPage() {
             transition={{ delay: 0.4 }}
           >
             <MagneticButton 
-              onClick={() => console.log('Register Now clicked')}
+              onClick={() => handleNavigation('/register/contestant')}
               className="group relative px-16 py-8 text-white font-black text-2xl rounded-full overflow-hidden shadow-xl"
               style={{ backgroundColor: GREEN }}
             >
