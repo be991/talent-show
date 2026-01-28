@@ -92,7 +92,7 @@ export const queryDocuments = async <T = DocumentData>(
     const collectionRef = collection(db, collectionName);
     const q = query(collectionRef, ...constraints);
     const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
+    return querySnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as T));
   } catch (error) {
     console.error(`Error querying documents in ${collectionName}:`, error);
     throw error;

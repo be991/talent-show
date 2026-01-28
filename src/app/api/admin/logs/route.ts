@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       .limit(50)
       .get();
 
-    const logs = snapshot.docs.map(doc => {
+    const logs = snapshot.docs.map((doc: any) => {
       const data = doc.data();
       return {
         id: doc.id,

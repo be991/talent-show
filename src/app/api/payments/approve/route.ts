@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     const batch = adminDb.batch();
     const updatedTickets: any[] = [];
 
-    ticketsQuery.docs.forEach((doc) => {
+    ticketsQuery.docs.forEach((doc: any) => {
       const ticketData = doc.data();
       batch.update(doc.ref, {
         status: 'verified',

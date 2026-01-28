@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     const userMap = new Map(usersSnapshot.docs.map((doc: any) => [doc.id, doc.data()]));
 
     tickets.forEach((t: any) => {
-      const user = userMap.get(t.userId);
+      const user = userMap.get(t.userId) as any;
       const email = t.email || user?.email;
       const phone = t.phoneNumber || t.whatsappNumber || user?.phone;
       const name = t.fullName || user?.displayName || 'Recipient';
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     const settingsDoc = await adminDb.collection('eventSettings').doc('settings').get();
     const eventSettings = settingsDoc.data() || {};
     
-    const contextRecipients = finalRecipients.map(r => ({
+    const contextRecipients = finalRecipients.map((r: any) => ({
       ...r,
       event_date: eventSettings.eventDate ? new Date(eventSettings.eventDate).toLocaleDateString() : 'TBA',
       event_venue: eventSettings.eventVenue || 'TBA',

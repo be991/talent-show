@@ -98,9 +98,9 @@ export async function sendEventReminder(to: string, eventData: any) {
 
 export async function sendBroadcastEmail(recipients: { email: string; name: string; [key: string]: any }[], subject: string, messageBody: string) {
   try {
-    const batch = recipients.map(recipient => {
+    const batch = recipients.map((recipient: any) => {
       let personalizedBody = messageBody;
-      Object.keys(recipient).forEach(key => {
+      Object.keys(recipient).forEach((key: string) => {
         const regex = new RegExp(`{${key}}`, 'g');
         personalizedBody = personalizedBody.replace(regex, recipient[key]);
       });

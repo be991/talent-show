@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
     let verified = 0;
     let pending = 0;
 
-    snapshot.forEach(doc => {
+    snapshot.forEach((doc: any) => {
         const data = doc.data();
         all++;
         if (data.ticketType === 'contestant') contestant++;

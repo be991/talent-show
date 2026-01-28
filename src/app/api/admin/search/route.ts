@@ -40,11 +40,11 @@ export async function GET(req: NextRequest) {
         const ticketCollection = adminDb.collection('tickets');
         // Try strict match on code
         const codeSnapshot = await ticketCollection.where('uniqueCode', '>=', query.toUpperCase()).where('uniqueCode', '<=', query.toUpperCase() + '\uf8ff').limit(5).get();
-        codeSnapshot.forEach(doc => results.push({ id: doc.id, typeId: 'ticket', ...doc.data() }));
+        codeSnapshot.forEach((doc: any) => results.push({ id: doc.id, typeId: 'ticket', ...doc.data() }));
 
         // Try match on email
         const emailSnapshot = await ticketCollection.where('email', '>=', query).where('email', '<=', query + '\uf8ff').limit(5).get();
-        emailSnapshot.forEach(doc => {
+        emailSnapshot.forEach((doc: any) => {
             if (!results.find(r => r.id === doc.id)) {
                 results.push({ id: doc.id, typeId: 'ticket', ...doc.data() });
             }
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
         const usersCollection = adminDb.collection('users');
         // Try match on email
         const userEmailSnap = await usersCollection.where('email', '>=', query).where('email', '<=', query + '\uf8ff').limit(5).get();
-        userEmailSnap.forEach(doc => results.push({ id: doc.id, typeId: 'user', ...doc.data() }));
+        userEmailSnap.forEach((doc: any) => results.push({ id: doc.id, typeId: 'user', ...doc.data() }));
 
         // Try match on displayName (case sensitive in Firestore, so this is best effort)
         // We really should use a proper search engine, but this is a "fix" for now.
@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
         
         // Fetch recent payments and filter if query is generic, or specific query if it looks like a ref
         const paymentSnap = await paymentsCollection.orderBy('createdAt', 'desc').limit(50).get();
-        paymentSnap.forEach(doc => {
+        paymentSnap.forEach((doc: any) => {
             const data = doc.data();
             const ref = data.reference || data.paymentReference || doc.id;
             const userEmail = data.userEmail || '';
@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
     // The client handles display.
     
     // Normalize Data for UI
-    const finalResults = results.map(item => ({
+    const finalResults = results.map((item: any) => ({
         id: item.id,
         typeId: item.typeId,
         name: item.fullName || item.displayName || item.name || 'Unknown',

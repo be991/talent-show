@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
     let paymentCount = 0;
     const dailyRevenue: Record<string, number> = {};
 
-    paymentsSnapshot.forEach(doc => {
+    paymentsSnapshot.forEach((doc: any) => {
       const data = doc.data();
       const amount = Number(data.amount) || 0;
       totalRevenue += amount;
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
     let verifiedTickets = 0;
     let admittedTickets = 0;
 
-    ticketsSnapshot.forEach(doc => {
+    ticketsSnapshot.forEach((doc: any) => {
       const data = doc.data();
       if (data.status === 'verified') verifiedTickets++;
       if (data.admittedAt) admittedTickets++; // Assuming admittedAt exists if admitted

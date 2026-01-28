@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     const usersRef = adminDb.collection('users');
     const snapshot = await usersRef.limit(50).get();
 
-    const users = snapshot.docs.map(doc => {
+    const users = snapshot.docs.map((doc: any) => {
         const data = doc.data();
         return {
             id: doc.id,

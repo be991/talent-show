@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
       .where('status', '==', 'verified')
       .get();
 
-    const tickets = ticketsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const tickets = ticketsSnapshot.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
     if (tickets.length === 0) {
       return NextResponse.json({

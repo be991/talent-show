@@ -61,6 +61,14 @@ export async function POST(req: NextRequest) {
       
       const contestantTicketRef = await adminDb.collection('tickets').add(contestantTicketData);
       
+      // Update user document with the photoURL so it shows up in general user directory
+      if (contestantTicketData.photoURL) {
+        await adminDb.collection('users').doc(registrationData.userId).update({
+          photoURL: contestantTicketData.photoURL,
+          updatedAt: adminField.serverTimestamp()
+        });
+      }
+      
       // Send Email if verified
       if (paymentMethod === 'card') {
         const userDoc = await adminDb.collection('users').doc(registrationData.userId).get();

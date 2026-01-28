@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       .limit(10)
       .get();
 
-    const history = snapshot.docs.map(doc => {
+    const history = snapshot.docs.map((doc: any) => {
       const data = doc.data();
       return {
         id: doc.id,
