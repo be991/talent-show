@@ -44,6 +44,7 @@ export default function AdminSearchPage() {
   const performSearch = async (q: string, filter: string) => {
     try {
         setLoading(true);
+        if (!auth) throw new Error('Auth not initialized');
         const idToken = await auth.currentUser?.getIdToken();
         const response = await fetch(`/api/admin/search?q=${encodeURIComponent(q)}&type=${filter}`, {
             headers: {

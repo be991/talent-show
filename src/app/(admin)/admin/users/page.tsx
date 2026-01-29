@@ -35,6 +35,7 @@ export default function AdminUsersPage() {
   useEffect(() => {
     const fetchUsers = async () => {
         try {
+            if (!auth) throw new Error('Auth not initialized');
             const idToken = await auth.currentUser?.getIdToken();
             const res = await fetch('/api/admin/users', {
                 headers: { 'Authorization': `Bearer ${idToken}` }

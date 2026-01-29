@@ -71,6 +71,7 @@ export default function AdminMessagingPage() {
   const fetchData = async () => {
     try {
       setLoadingHistory(true);
+      if (!auth) return;
       const idToken = await auth.currentUser?.getIdToken();
       if (!idToken) return;
 
@@ -146,6 +147,7 @@ export default function AdminMessagingPage() {
     setSendProgress(0);
     
     try {
+      if (!auth) throw new Error('Auth not initialized');
       const idToken = await auth.currentUser?.getIdToken();
       const response = await fetch('/api/admin/messaging/blast', {
         method: 'POST',

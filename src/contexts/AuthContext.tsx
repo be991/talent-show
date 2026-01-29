@@ -4,6 +4,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User as FirebaseUser } from 'firebase/auth';
 import { onAuthStateChange, signInWithGoogle, logout, isAdmin } from '@/lib/firebase/auth';
 import { createDocument, getDocument } from '@/lib/firebase/firestore';
+import { auth } from '@/lib/firebase/config';
 import { User } from '@/types';
 
 interface AuthContextType {
@@ -23,6 +24,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
     const unsubscribe = onAuthStateChange(async (firebaseUser: FirebaseUser | null) => {
       setLoading(true);
       setError(null);

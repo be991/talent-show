@@ -17,7 +17,7 @@ const app = getApps().length > 0 ? getApp() : (
   firebaseConfig.apiKey ? initializeApp(firebaseConfig) : null
 );
 
-const auth = app ? getAuth(app) : ({} as any);
-const db = app ? getFirestore(app) : ({} as any);
+const auth = app ? getAuth(app) : null;
+const db = app ? getFirestore(app) : null;
 
 export { app, auth, db };

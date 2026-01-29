@@ -32,6 +32,7 @@ export default function AdminAnalyticsPage() {
     const fetchStats = async () => {
       try {
         setLoading(true);
+        if (!auth) throw new Error('Auth not initialized');
         const idToken = await auth.currentUser?.getIdToken();
         const response = await fetch('/api/admin/analytics', {
           headers: { 'Authorization': `Bearer ${idToken}` }

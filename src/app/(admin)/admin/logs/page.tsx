@@ -35,6 +35,7 @@ export default function AdminLogsPage() {
     const fetchLogs = async () => {
       try {
         setLoading(true);
+        if (!auth) throw new Error('Auth not initialized');
         const idToken = await auth.currentUser?.getIdToken();
         const response = await fetch('/api/admin/logs', {
           headers: {

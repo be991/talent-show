@@ -19,6 +19,7 @@ import { db } from './config';
  * Creates or overwrites a document in a specified collection
  */
 export const createDocument = async (collectionName: string, id: string, data: any) => {
+  if (!db) throw new Error('Firestore not initialized');
   try {
     const docRef = doc(db, collectionName, id);
     await setDoc(docRef, {
@@ -37,6 +38,7 @@ export const createDocument = async (collectionName: string, id: string, data: a
  * Gets a single document by ID
  */
 export const getDocument = async <T = DocumentData>(collectionName: string, id: string): Promise<T | null> => {
+  if (!db) throw new Error('Firestore not initialized');
   try {
     const docRef = doc(db, collectionName, id);
     const docSnap = await getDoc(docRef);
@@ -54,6 +56,7 @@ export const getDocument = async <T = DocumentData>(collectionName: string, id: 
  * Updates an existing document
  */
 export const updateDocument = async (collectionName: string, id: string, data: any) => {
+  if (!db) throw new Error('Firestore not initialized');
   try {
     const docRef = doc(db, collectionName, id);
     await updateDoc(docRef, {
@@ -71,6 +74,7 @@ export const updateDocument = async (collectionName: string, id: string, data: a
  * Deletes a document
  */
 export const deleteDocument = async (collectionName: string, id: string) => {
+  if (!db) throw new Error('Firestore not initialized');
   try {
     const docRef = doc(db, collectionName, id);
     await deleteDoc(docRef);
@@ -88,6 +92,7 @@ export const queryDocuments = async <T = DocumentData>(
   collectionName: string, 
   constraints: QueryConstraint[] = []
 ): Promise<T[]> => {
+  if (!db) throw new Error('Firestore not initialized');
   try {
     const collectionRef = collection(db, collectionName);
     const q = query(collectionRef, ...constraints);
