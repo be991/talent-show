@@ -92,7 +92,7 @@ export default function AdminSearchPage() {
                  <SearchIcon className="text-gray-200" size={40} />
               </div>
               <h2 className="text-3xl font-black text-gray-900 mb-4 tracking-tight">Global Command Search</h2>
-              <p className="text-gray-500 max-w-md mx-auto leading-relaxed">Instantly reach any ticket, transaction, or user account across the entire NGT10 ecosystem.</p>
+              <p className="text-gray-500 max-w-md mx-auto leading-relaxed">Instantly reach any ticket, transaction, or user account across the entire NGT1.0 ecosystem.</p>
               
               <div className="mt-12 grid grid-cols-2 md:grid-cols-3 gap-3">
                  {['Contestants', 'Pending', 'Admin', 'Ticket', 'NGT-', 'REF-'].map(tag => (

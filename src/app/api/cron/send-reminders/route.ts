@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
 
       try {
         await sendEventReminder(userEmail, {
-          name: settings.eventName || 'NGT10 - Talent Stardom',
+          name: settings.eventName || 'NGT1.0 - Talent Stardom',
           venue: settings.venue || 'Main Auditorium',
           date: settings.eventDate,
           time: settings.eventTime || '4:00 PM',

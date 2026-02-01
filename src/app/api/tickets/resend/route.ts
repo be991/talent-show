@@ -57,8 +57,8 @@ export async function POST(req: NextRequest) {
     }
 
     // 6. Generate WhatsApp link (client-side generation is preferred, but we return ticket data)
-    const domain = "https://talent-show-ngt10.vercel.app";
-    const whatsappText = `🎟️ *NGT10 - TALENT STARDOM TICKET* 🎟️
+    const domain = "https://talent-show-ngt1.0.vercel.app";
+    const whatsappText = `🎟️ *NGT1.0 - TALENT STARDOM TICKET* 🎟️
 
 Hello *${ticketData.fullName}*,
 

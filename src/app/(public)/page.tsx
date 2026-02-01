@@ -155,22 +155,14 @@ function wrap(min: number, max: number, v: number) {
   return ((((v - min) % rangeSize) + rangeSize) % rangeSize) + min;
 }
 
-// ========== HORIZONTAL SCROLL SECTION ==========
-function HorizontalScrollSection({ children }: { children: React.ReactNode }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"]
-  });
-  
-  const x = useTransform(scrollYProgress, [0, 1], ["0%", "-50%"]);
-
+// ========== EVENT DETAILS GRID SECTION ==========
+function EventDetailsGrid({ children }: { children: React.ReactNode }) {
   return (
-    <section ref={containerRef} className="relative h-[180vh]">
-      <div className="sticky top-0 h-screen flex items-center overflow-hidden">
-        <motion.div style={{ x }} className="flex gap-8 pl-[5vw]">
+    <section className="relative py-24 px-4 md:px-8 bg-transparent">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
           {children}
-        </motion.div>
+        </div>
       </div>
     </section>
   );
@@ -482,7 +474,7 @@ export default function LandingPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 1, duration: 0.6 }}
           >
-            <CircularText text="✦ SEASON 10 ✦ TALENT STARDOM ✦ " />
+            <CircularText text="✦ SEASON 1.0 ✦ TALENT STARDOM ✦ " />
           </motion.div>
           
           {/* Tagline */}
@@ -567,7 +559,7 @@ export default function LandingPage() {
 
       {/* ========== VELOCITY MARQUEE ========== */}
       <section className="py-8 border-y" style={{ borderColor: 'rgba(45,80,22,0.1)' }}>
-        <VelocityText baseVelocity={2}>NUTESA GOT TALENT • SEASON 10 • </VelocityText>
+        <VelocityText baseVelocity={2}>NUTESA GOT TALENT • SEASON 1.0 • </VelocityText>
       </section>
 
       {/* ========== CATEGORIES - STACKED FAN CARDS ========== */}
@@ -604,47 +596,61 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ========== HORIZONTAL SCROLL - EVENT DETAILS ========== */}
-      <HorizontalScrollSection>
-        {eventDetails.map((detail, index) => {
-          // Add some simple skew based on index for a dynamic feel
-          const skewEffect = index % 2 === 0 ? 0 : 0;
-          
-          return (
-            <motion.div
-              key={detail.title}
-            className="flex-shrink-0 w-[80vw] sm:w-[60vw] md:w-[40vw] lg:w-[30vw] h-[60vh] border-2 rounded-[3rem] p-10 flex flex-col justify-between group transition-all duration-500 shadow-lg hover:shadow-2xl"
-            style={{ borderColor: 'rgba(45,80,22,0.2)', backgroundColor: BG_CREAM }}
-            whileHover={{ scale: 1.02, borderColor: GREEN }}
+      {/* ========== EVENT DETAILS - RESPONSIVE GRID ========== */}
+      <EventDetailsGrid>
+        {eventDetails.map((detail, index) => (
+          <motion.div
+            key={detail.title}
+            className="group relative h-96 border-2 rounded-[3.5rem] p-10 flex flex-col justify-between transition-all duration-700 overflow-hidden shadow-lg hover:shadow-2xl hover:-translate-y-2"
+            style={{ 
+              borderColor: 'rgba(45,80,22,0.1)', 
+              backgroundColor: BG_CREAM 
+            }}
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ 
+              duration: 0.8, 
+              delay: index * 0.1, 
+              ease: [0.21, 0.47, 0.32, 0.98] 
+            }}
           >
+            {/* Background Glow */}
+            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-40 h-40 bg-white/20 rounded-full blur-3xl transition-opacity group-hover:opacity-100 opacity-0" />
+            
             <motion.div 
-              className="w-20 h-20 rounded-2xl flex items-center justify-center"
-              style={{ backgroundColor: 'rgba(45,80,22,0.1)' }}
-              whileHover={{ rotate: 360, scale: 1.1 }}
-              transition={{ duration: 0.6 }}
+              className="relative z-10 w-16 h-16 rounded-2xl flex items-center justify-center transition-colors group-hover:shadow-lg"
+              style={{ backgroundColor: 'rgba(45,80,22,0.05)' }}
+              whileHover={{ rotate: 12, scale: 1.1 }}
             >
-              <detail.icon className="w-10 h-10" style={{ color: GREEN }} />
+              <detail.icon className="w-8 h-8 transition-transform duration-500 group-hover:scale-110" style={{ color: GREEN }} />
             </motion.div>
             
-            <div>
-              <p className="text-gray-500 text-sm font-medium mb-2 uppercase tracking-widest">{detail.title}</p>
-              <p className="text-5xl sm:text-6xl md:text-7xl font-black text-gray-900 mb-2">{detail.value}</p>
-              <p className="text-gray-500">{detail.subtitle}</p>
+            <div className="relative z-10 mt-8">
+              <p className="text-gray-500 text-xs font-bold uppercase tracking-[0.2em] mb-3 opacity-60 group-hover:opacity-100 transition-opacity">
+                {detail.title}
+              </p>
+              <p className="text-5xl md:text-6xl font-black text-gray-950 mb-3 tracking-tighter transition-transform group-hover:scale-105 origin-left">
+                {detail.value}
+              </p>
+              <p className="text-gray-500 font-medium text-sm group-hover:text-gray-700 transition-colors">
+                {detail.subtitle}
+              </p>
             </div>
             
-            <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
+            <div className="relative z-10 w-full h-1.5 bg-gray-200/50 rounded-full overflow-hidden mt-6">
               <motion.div 
-                className="h-full"
+                className="h-full rounded-full"
                 style={{ backgroundColor: GREEN }}
                 initial={{ width: 0 }}
                 whileInView={{ width: '100%' }}
-                transition={{ duration: 1.5, delay: index * 0.2 }}
+                viewport={{ once: true }}
+                transition={{ duration: 2, delay: 0.5 + (index * 0.1), ease: "easeInOut" }}
               />
             </div>
-            </motion.div>
-          );
-        })}
-      </HorizontalScrollSection>
+          </motion.div>
+        ))}
+      </EventDetailsGrid>
 
       {/* ========== CTA SECTION ========== */}
       <section className="relative py-40 px-4 overflow-hidden" style={{ background: `linear-gradient(to bottom, ${BG_WARM}, ${BG_CREAM}, ${BG_WARM})` }}>
@@ -952,7 +958,7 @@ export default function LandingPage() {
               transition={{ duration: 2, repeat: Infinity }}
             >
               <h3 className="text-6xl sm:text-7xl md:text-8xl font-black text-white">
-                NGT<span className="text-white/80">10</span>
+                NGT<span className="text-white/80">1.0</span>
               </h3>
             </motion.div>
             

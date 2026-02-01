@@ -24,9 +24,9 @@ export function formatDate(date: Date | string | number) {
 
 export function getWhatsAppTicketLink(ticket: any) {
   const baseUrl = "https://wa.me/";
-  const domain = "https://talent-show-ngt10.vercel.app";
+  const domain = "https://talent-show-ngt1.0.vercel.app";
   
-  const text = `🎟️ *NGT10 - TALENT STARDOM TICKET* 🎟️
+  const text = `🎟️ *NGT1.0 - TALENT STARDOM TICKET* 🎟️
 
 Hello *${ticket.fullName}*,
 

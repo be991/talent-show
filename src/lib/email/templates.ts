@@ -17,7 +17,7 @@ export const ticketEmailTemplate = (ticket: any, qrCodeUrl: string) => `
 <body>
   <div class="container">
     <div class="header">
-      <div class="logo">NGT10 - TALENT STARDOM</div>
+      <div class="logo">NGT1.0 - TALENT STARDOM</div>
       <h2>Your Ticket is Ready!</h2>
     </div>
     
@@ -32,13 +32,13 @@ export const ticketEmailTemplate = (ticket: any, qrCodeUrl: string) => `
     </div>
 
     <div class="details">
-      <p><strong>Event:</strong> NUTESA Got Talent NGT10</p>
+      <p><strong>Event:</strong> NUTESA Got Talent NGT1.0</p>
       <p><strong>Venue:</strong> University Main Auditorium</p>
       <p><strong>Date:</strong> Check portal for actual date/time</p>
     </div>
 
     <center>
-      <a href="https://talent-show-ngt10.vercel.app/dashboard" class="btn">View on Dashboard</a>
+      <a href="https://talent-show-ngt1.0.vercel.app/dashboard" class="btn">View on Dashboard</a>
     </center>
 
     <div class="footer">
@@ -66,7 +66,7 @@ export const paymentConfirmationTemplate = (payment: any) => `
   <div class="container">
     <h2 class="header">Payment Received</h2>
     <p>Hi ${payment.fullName},</p>
-    <p>We've successfully received your payment for <strong>NGT10 - Talent Stardom</strong>.</p>
+    <p>We've successfully received your payment for <strong>NGT1.0 - Talent Stardom</strong>.</p>
     
     <div style="background: #f4f7f2; padding: 20px; border-radius: 10px; margin: 20px 0;">
       <p style="margin: 0; color: #666;">Amount Paid:</p>
@@ -77,7 +77,7 @@ export const paymentConfirmationTemplate = (payment: any) => `
     <p>Your tickets are being generated and will be sent to your email shortly. You can also view them in your dashboard.</p>
     
     <div class="footer">
-       NUTESA Got Talent NGT10 Team
+       NUTESA Got Talent NGT1.0 Team
     </div>
   </div>
 </body>
@@ -158,7 +158,7 @@ export const eventReminderTemplate = (to: string, eventData: any) => `
       <h1>Event Reminder!</h1>
     </div>
     <div style="padding: 20px;">
-      <h2>${eventData.name || 'NGT10 - Talent Stardom'}</h2>
+      <h2>${eventData.name || 'NGT1.0 - Talent Stardom'}</h2>
       <p>Hello,</p>
       <p>This is a reminder for the upcoming talent show. We are excited to see you!</p>
       <p><strong>Venue:</strong> ${eventData.venue || 'Main Auditorium'}</p>

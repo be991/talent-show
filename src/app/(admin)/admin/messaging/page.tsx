@@ -34,9 +34,9 @@ const GOLD = '#F5C542';
 const BG_WARM = '#EFF1EC';
 
 const TEMPLATES = [
-  { id: 'reminder', name: 'Event Reminder', subject: 'Get Ready for NGT10!', body: 'Hello {name}, this is a reminder that the Talent Stardom event is happening on {event_date} at {event_venue}. See you there!' },
+  { id: 'reminder', name: 'Event Reminder', subject: 'Get Ready for NGT1.0!', body: 'Hello {name}, this is a reminder that the Talent Stardom event is happening on {event_date} at {event_venue}. See you there!' },
   { id: 'payment', name: 'Payment Confirmation', subject: 'Payment Received', body: 'Hello {name}, your payment for ticket {ticket_code} has been confirmed. You can download your ticket from your dashboard.' },
-  { id: 'delivery', name: 'Ticket Delivery', subject: 'Your Ticket is Ready', body: 'Hello {name}, your digital ticket for NGT10 is now available. Unique Code: {ticket_code}. Prepare for stardom!' },
+  { id: 'delivery', name: 'Ticket Delivery', subject: 'Your Ticket is Ready', body: 'Hello {name}, your digital ticket for NGT1.0 is now available. Unique Code: {ticket_code}. Prepare for stardom!' },
 ];
 
 const RECIPIENT_FILTER_DEFAULTS = [
@@ -519,7 +519,7 @@ export default function AdminMessagingPage() {
                               <div className="bg-gray-50 border border-gray-100 rounded-[2rem] p-8 shadow-inner">
                                  <div className="bg-white border border-gray-100 rounded-xl overflow-hidden shadow-sm">
                                     <div className="bg-green-700 p-6 text-center">
-                                       <h2 className="text-white font-black uppercase tracking-tighter text-lg">NGT10 STARDOM</h2>
+                                       <h2 className="text-white font-black uppercase tracking-tighter text-lg">NGT1.0 STARDOM</h2>
                                     </div>
                                     <div className="p-8">
                                        <p className="text-lg font-black text-gray-900 mb-4">{subject}</p>

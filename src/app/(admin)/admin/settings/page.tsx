@@ -67,7 +67,7 @@ export default function AdminSettingsPage() {
         if (!settingsData) {
           // Create default settings
           const defaultSettings = {
-            eventName: 'NUTESA Got Talent NGT10 - Talent Stardom',
+            eventName: 'NUTESA Got Talent NGT1.0 - Talent Stardom',
             eventDate: '',
             eventTime: '',
             eventVenue: '',
@@ -309,7 +309,7 @@ export default function AdminSettingsPage() {
                     <ShieldAlert size={18} className="text-green-400" />
                     <span className="font-black text-xs uppercase tracking-widest text-green-100">Admin Stats</span>
                  </div>
-                 <p className="text-[11px] text-green-100/60 font-medium leading-relaxed mb-4">You are currently managing "NUTESA Got Talent NGT10" configuration.</p>
+                 <p className="text-[11px] text-green-100/60 font-medium leading-relaxed mb-4">You are currently managing "NUTESA Got Talent NGT1.0" configuration.</p>
                  <Badge className="bg-white/10 text-white border-none text-[10px] py-1">VERIFIED ROLE</Badge>
               </div>
            </div>

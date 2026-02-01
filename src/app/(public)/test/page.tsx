@@ -7,7 +7,7 @@ export default function DesignSystemTestPage() {
     <div className="min-h-screen bg-talent-mesh p-8 md:p-12 space-y-12">
       <header className="space-y-4">
         <h1 className="text-4xl md:text-6xl font-black text-gradient-gold animate-fade-in">
-          NGT10 Design System
+          NGT1.0 Design System
         </h1>
         <p className="text-xl text-muted-foreground animate-slide-up">
           Validating colors, typography, and components for "Talent Stardom".

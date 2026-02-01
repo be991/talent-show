@@ -64,7 +64,7 @@ export function Navbar() {
             <Sparkles className="w-6 h-6" />
           </div>
           <span className="text-2xl font-black tracking-tighter text-gray-900">
-            NGT<span style={{ color: GREEN }}>10</span>
+            NGT<span style={{ color: GREEN }}>1.0</span>
           </span>
         </Link>
 

@@ -305,7 +305,7 @@ for (let i = 2; i <= 55; i++) {
 // ============================================
 
 export const mockEventSettings: EventSettings = {
-  eventName: 'NUTESA Got Talent NGT10 - Talent Stardom',
+  eventName: 'NUTESA Got Talent NGT1.0 - Talent Stardom',
   eventDate: new Date('2024-03-15'),
   eventTime: '16:00',
   eventVenue: 'Main Auditorium, University Complex',

@@ -99,7 +99,7 @@ export default function BadgeTestPage() {
         <div className="space-y-4">
           <div className="p-4 bg-white rounded-xl border border-gray-200 flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-gray-900">Ticket #NGT10-001</h3>
+              <h3 className="font-semibold text-gray-900">Ticket #NGT1.0-001</h3>
               <p className="text-sm text-gray-500">Contestant Registration</p>
             </div>
             <Badge variant="success" dot pill>Verified</Badge>
@@ -107,7 +107,7 @@ export default function BadgeTestPage() {
           
           <div className="p-4 bg-white rounded-xl border border-gray-200 flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-gray-900">Ticket #NGT10-002</h3>
+              <h3 className="font-semibold text-gray-900">Ticket #NGT1.0-002</h3>
               <p className="text-sm text-gray-500">Bank Transfer Pending</p>
             </div>
             <Badge variant="warning" icon={<Clock size={14} />} pill>Awaiting Approval</Badge>
@@ -115,7 +115,7 @@ export default function BadgeTestPage() {
           
           <div className="p-4 bg-white rounded-xl border border-gray-200 flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-gray-900">Ticket #NGT10-003</h3>
+              <h3 className="font-semibold text-gray-900">Ticket #NGT1.0-003</h3>
               <p className="text-sm text-gray-500">Payment Failed</p>
             </div>
             <Badge variant="error" icon={<XCircle size={14} />} pill>Rejected</Badge>

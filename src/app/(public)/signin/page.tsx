@@ -99,7 +99,7 @@ function SignInContent() {
           >
             <h1 className="text-3xl font-black text-gray-900 mb-2">Welcome Back</h1>
             <p className="text-gray-500 mb-10">
-              Sign in to get your ticket or register as a contestant for <span className="font-bold whitespace-nowrap" style={{ color: GREEN }}>Season 10</span>
+              Sign in to get your ticket or register as a contestant for <span className="font-bold whitespace-nowrap" style={{ color: GREEN }}>Season 1.0</span>
             </p>
           </motion.div>
 

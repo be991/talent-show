@@ -1,4 +1,4 @@
-# NUTESA Got Talent NGT10 Ticketing System
+# NUTESA Got Talent NGT1.0 Ticketing System
 
 A modern, light-theme talent show event ticketing system for the "Talent Stardom" university talent competition.
 
